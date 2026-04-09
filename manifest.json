@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "RTB Stream Launcher",
+  "version": "1.0.0",
+  "description": "Hosts RTB Stream in a Chrome extension and injects Publica auth context from app.getpublica.com.",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://app.getpublica.com/*",
+    "https://api.getpublica.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "RTB Stream Launcher"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://app.getpublica.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "page-bridge.js"
+      ],
+      "matches": [
+        "https://app.getpublica.com/*"
+      ]
+    }
+  ]
+}
