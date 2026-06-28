@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Json Beautilier</title>
+  <style>
+    :root {
+      --brand: #e9a24a;
+      --text: #2f2418;
+      --muted: #6f6254;
+      --surface: #ffffff;
+      --border: #ead7bd;
+      --danger: #a12d2d;
+      --danger-bg: #fff2f2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #fffaf3 0%, #fff4e6 100%);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(47, 36, 24, 0.08);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .view-toggle button {
+      border-color: transparent;
+      background: transparent;
+      min-height: 30px;
+      padding: 8px 10px;
+    }
+
+    .view-toggle button.active {
+      background: #fff0d8;
+      border-color: #e3ba7a;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid #e3ba7a;
+      border-radius: 8px;
+      background: #fff0d8;
+      color: var(--text);
+      cursor: pointer;
+      font: 700 13px/1 Arial, Helvetica, sans-serif;
+      min-height: 36px;
+      padding: 10px 14px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #ffe3b8;
+      border-color: #d99a45;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .secondary {
+      background: #ffffff;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .panel {
+      display: grid;
+      grid-template-rows: auto minmax(420px, 1fr);
+      gap: 10px;
+      min-width: 0;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 420px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      background: #fffdfa;
+      color: var(--text);
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    textarea:focus {
+      outline: 2px solid rgba(233, 162, 74, 0.30);
+      border-color: var(--brand);
+    }
+
+    textarea[readonly] {
+      background: #fffaf3;
+    }
+
+    .output-wrap {
+      min-height: 420px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fffaf3;
+      overflow: auto;
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .tree-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      min-height: 24px;
+      white-space: nowrap;
+    }
+
+    .tree-toggle {
+      width: 20px;
+      min-width: 20px;
+      min-height: 20px;
+      height: 20px;
+      padding: 0;
+      border-radius: 5px;
+      font: 700 13px/18px Menlo, Monaco, Consolas, monospace;
+      text-align: center;
+    }
+
+    .tree-spacer {
+      width: 20px;
+      min-width: 20px;
+    }
+
+    .tree-children {
+      margin-left: 27px;
+    }
+
+    .tree-node.collapsed > .tree-children {
+      display: none;
+    }
+
+    .tree-label {
+      color: #2f2418;
+      font-weight: 700;
+    }
+
+    .tree-summary {
+      color: var(--muted);
+    }
+
+    .tree-value {
+      color: #8a541b;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .plain-output {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: inherit;
+    }
+
+    .status {
+      margin-top: 14px;
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .status.error {
+      display: inline-block;
+      color: var(--danger);
+      background: var(--danger-bg);
+      border: 1px solid #f1c7c7;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    @media (max-width: 820px) {
+      body {
+        padding: 14px;
+      }
+
+      .page {
+        padding: 18px;
+      }
+
+      .header,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .header {
+        display: grid;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="header">
+      <div>
+        <h1>Json Beautilier</h1>
+        <p class="meta">Paste JSON, format it with indentation, then copy the beautified output.</p>
+      </div>
+      <div class="actions">
+        <div class="view-toggle" aria-label="Output view">
+          <button type="button" id="structuredViewButton">Structured</button>
+          <button type="button" id="plainViewButton" class="active">Plain Text</button>
+        </div>
+        <button type="button" id="beautifyButton">Beautify</button>
+        <button type="button" id="unbeautifyButton">Unbeautify</button>
+        <button type="button" class="secondary" id="copyButton" disabled>Copy</button>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <section class="panel">
+        <label for="jsonInput">JSON input</label>
+        <textarea id="jsonInput" spellcheck="false" placeholder='{"id":1,"name":"Example","tags":["alpha","beta"]}'></textarea>
+      </section>
+
+      <section class="panel">
+        <label for="jsonOutput">Beautified JSON</label>
+        <div class="output-wrap" id="jsonOutput"></div>
+      </section>
+    </div>
+
+    <div class="status" id="status"></div>
+  </main>
+
+  <script src="structured-output.js"></script>
+  <script src="json-beautilier.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#ffffff"/>
+  <circle cx="256" cy="256" r="238" fill="#57c3bb"/>
+  <text
+    x="256"
+    y="256"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="Arial Rounded MT Bold, Helvetica, Arial, sans-serif"
+    font-size="268"
+    font-weight="800"
+    fill="#ffffff">T</text>
+</svg>

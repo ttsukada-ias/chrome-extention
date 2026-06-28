@@ -7,7 +7,14 @@
   <style>
     /* Base styling */
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #333; padding: 20px; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #163233;
+      padding: 24px;
+      background: linear-gradient(180deg, #f6fcfb 0%, #edf8f6 100%);
+      font-size: 14px;
+      line-height: 1.45;
+    }
 
     .header {
       background-color: #005f99;
@@ -20,11 +27,15 @@
       border-radius: 5px;
     }
 
-    .button-container { display: flex; gap: 10px; padding: 10px 0; }
+    .button-container {
+      display: flex;
+      gap: 10px;
+      padding: 10px 0;
+    }
 
     button {
       padding: 10px 20px;
-      font-size: 1em;
+      font-size: 14px;
       cursor: pointer;
       color: #fff;
       background-color: #005f99;
@@ -64,7 +75,7 @@
     .form-wrapper.hidden { display: none; }
 
     label {
-      font-size: 0.9em;
+      font-size: 14px;
       font-weight: bold;
       margin-bottom: 5px;
       display: block;
@@ -78,7 +89,7 @@
       padding: 8px;
       border-radius: 4px;
       border: 1px solid #ccc;
-      font-size: 0.9em;
+      font-size: 14px;
       background-color: #fafafa;
     }
 
@@ -92,7 +103,7 @@
     #dataItemsCheckboxes div {
       display: flex;
       align-items: center;
-      font-size: 0.9em;
+      font-size: 14px;
       gap: 6px;
     }
 
@@ -125,7 +136,7 @@
     .inner-table-container.visible { opacity: 1; }
 
     .inner-table { width: 100%; border-collapse: collapse; }
-    td { padding: 8px; text-align: center; font-size: 0.9em; }
+    td { padding: 8px; text-align: center; font-size: 14px; }
 
     @keyframes slideAcross {
       from { transform: translate(0, -50%); }
@@ -153,8 +164,12 @@
 
     .auth-field input{ width: 100%; }
 
+    .auth-field input[list] {
+      width: 100%;
+    }
+
     .auth-field label{
-      font-size: 0.85em;
+      font-size: 14px;
       font-weight: 600;
       color: #444;
       margin-bottom: 4px;
@@ -162,7 +177,7 @@
 
     .auth-field input{
       padding: 6px 8px;
-      font-size: 0.85em;
+      font-size: 14px;
       border-radius: 4px;
       border: 1px solid #ccc;
       background-color: #fafafa;
@@ -174,13 +189,20 @@
       background-color: #fff;
     }
 
+    .publisher-helper {
+      font-size: 12px;
+      color: #555;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
     .site-row{
       margin: 0 0 10px 0;
       width: 520px;
       max-width: 100%;
     }
     .site-field label{
-      font-size: 0.85em;
+      font-size: 14px;
       font-weight: 600;
       color: #444;
       margin-bottom: 4px;
@@ -189,7 +211,7 @@
     .site-field select{
       width: 100%;
       padding: 6px 8px;
-      font-size: 0.85em;
+      font-size: 14px;
       border-radius: 4px;
       border: 1px solid #ccc;
       background-color: #fafafa;
@@ -236,19 +258,6 @@
       font-size: 0.8em;
       color: #555;
       margin-top: 4px;
-    }
-
-    .token-status-inline{
-      align-self: flex-end;
-      margin-left: 8px;
-      padding: 6px 10px;
-      font-size: 0.8em;
-      border-radius: 4px;
-      border: 1px dashed #bbb;
-      background: #f9f9f9;
-      color: #333;
-      white-space: nowrap;
-      height: fit-content;
     }
 
     .pod-table {
@@ -312,7 +321,7 @@
       border-radius: 6px;
       background: #eef6fb;
       color: #0f4f78;
-      font-size: 0.95em;
+      font-size: 14px;
       font-weight: 600;
     }
     .stream-status.visible {
@@ -324,7 +333,6 @@
 <header class="header">RTB Stream by Tets</header>
 
 <div class="button-container">
-  <button type="button" id="authButton">Authenticate</button>
   <button type="button" id="toggleFormButton">Hide Config</button>
   <button type="button" id="fetchDataButton">Start</button>
   <button type="button" id="pauseButton" disabled>Pause</button>
@@ -334,27 +342,11 @@
 <div id="authWrapper">
   <div class="auth-row">
     <div class="auth-field">
-      <label for="publisherIdAuth">Publisher ID</label>
-      <input type="text" id="publisherIdAuth" placeholder="e.g. 586">
-    </div>
-
-    <div class="auth-field">
-      <label for="authUsername">Username</label>
-      <input type="text" id="authUsername" placeholder="email@example.com">
-    </div>
-
-    <div class="auth-field">
-      <label for="authPassword">Password</label>
-      <input type="password" id="authPassword" placeholder="••••••••">
-    </div>
-
-    <div class="auth-field">
-      <label for="authAccessToken">Access Token (Publica only)</label>
-      <input type="text" id="authAccessToken" placeholder="Paste access token to bypass auth">
-    </div>
-
-    <div class="token-status-inline" id="tokenStatus">
-      Token: (not authenticated)
+      <label for="publisherSearchInput">Publisher</label>
+      <input type="text" id="publisherSearchInput" list="publisherSearchList" placeholder="Search by Publisher ID or Publisher Name" autocomplete="off">
+      <datalist id="publisherSearchList"></datalist>
+      <input type="hidden" id="publisherIdAuth">
+      <div class="publisher-helper" id="publisherHelper">Type to search publishers, then choose one to load sites.</div>
     </div>
   </div>
 
@@ -365,7 +357,7 @@
 
       <label for="siteSelect">Site (multi-select)</label>
       <select id="siteSelect" disabled multiple size="8">
-        <option value="">Authenticate to load sites…</option>
+        <option value="">Open from Publica and enter Publisher ID to load sites…</option>
       </select>
 
       <div class="site-controls">
@@ -427,11 +419,6 @@
         <option value="">All Demand Sources</option>
       </select>
       <div class="field-help">Creative Stream only. Choose All to show every demand source.</div>
-      <div class="field-help">Click Start to scan live logs and automatically discover new demand sources while streaming.</div>
-      <div class="demand-source-controls">
-        <button type="button" id="populateDemandSourcesButton" disabled>Populate Demand List</button>
-        <span class="site-hint" id="demandSourceStatus">Select site(s), then populate the list.</span>
-      </div>
     </div>
 
     <div>

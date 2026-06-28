@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Logs by Tets</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #f6fcfb 0%, #edf8f6 100%);
+      color: #163233;
+      padding: 24px;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #d7e7e5;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(22, 50, 51, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+    }
+
+    .intro {
+      margin: 0 0 18px;
+      color: #4b6263;
+      line-height: 1.5;
+    }
+
+    .status {
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #eef8f7;
+      color: #1f7f78;
+      font-weight: 700;
+    }
+
+    .status.warn {
+      background: #fff4e8;
+      color: #a15c00;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cfe1df;
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .field input[list] {
+      width: 100%;
+    }
+
+    .publisher-helper {
+      margin-top: 6px;
+      color: #5d7172;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .page-tools {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 18px;
+    }
+
+    .config-section.hidden {
+      display: none;
+    }
+
+    .multi-panel {
+      border: 1px solid #d7e7e5;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 18px;
+      background: #fcfefe;
+    }
+
+    .multi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .multi-title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .multi-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #0d6e8a;
+      color: #fff;
+    }
+
+    button.secondary {
+      background: #dcebea;
+      color: #285153;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .helper {
+      margin-top: 8px;
+      color: #5d7172;
+      font-size: 13px;
+    }
+
+    .field-selector {
+      border: 1px solid #d7e7e5;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 18px;
+      background: #fcfefe;
+    }
+
+    .hidden,
+    .field-section.hidden,
+    .field-selector.hidden {
+      display: none;
+    }
+
+    .field-section {
+      margin-bottom: 18px;
+    }
+
+    .field-selector-title {
+      margin: 0 0 10px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .field-selector-options {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .field-group {
+      display: contents;
+    }
+
+    .field-group.hidden {
+      display: none;
+    }
+
+    .field-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #163233;
+    }
+
+    .field-option input {
+      margin: 0;
+    }
+
+    #itemSelect {
+      min-height: 260px;
+    }
+
+    .output-tools {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: end;
+    }
+
+    .results {
+      border: 1px solid #d7e7e5;
+      border-radius: 14px;
+      background: #fbfefe;
+      min-height: 300px;
+      max-height: 520px;
+      overflow: auto;
+      padding: 10px;
+    }
+
+    .results.expanded {
+      min-height: calc(100vh - 260px);
+      max-height: calc(100vh - 220px);
+    }
+
+    .result-item {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff;
+      color: #163233;
+      border: 1px solid #e3efee;
+      margin-bottom: 8px;
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .result-item:hover {
+      border-color: #0d6e8a;
+      box-shadow: 0 8px 20px rgba(13, 110, 138, 0.1);
+    }
+
+    .results-table {
+      min-width: 100%;
+    }
+
+    .results-table-header,
+    .results-table-row {
+      display: grid;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .results-table-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      margin-bottom: 8px;
+      padding: 0 2px;
+      background: #fbfefe;
+    }
+
+    .results-table-head {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #dff0ee;
+      color: #163233;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .results-table-row {
+      width: 100%;
+      border: 1px solid #e3efee;
+      border-radius: 10px;
+      background: #fff;
+      color: #163233;
+      margin-bottom: 8px;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .results-table-row:hover {
+      border-color: #0d6e8a;
+      box-shadow: 0 8px 20px rgba(13, 110, 138, 0.1);
+    }
+
+    .results-table-cell {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      min-width: 0;
+      border-left: 1px solid #eef5f4;
+      border-radius: 0;
+      background: transparent;
+      color: #163233;
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .results-table-cell:first-child {
+      border-left: 0;
+    }
+
+    .results-table-cell:hover {
+      background: #f5fbfb;
+      box-shadow: none;
+      border-color: #eef5f4;
+    }
+
+    .results-table-cell.preview-cell {
+      padding: 8px;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+
+    .results-table-cell.preview-cell:hover {
+      background: transparent;
+    }
+
+    .video-preview-link {
+      display: block;
+      width: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #0c1718;
+      text-decoration: none;
+    }
+
+    .video-preview {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      background: #0c1718;
+    }
+
+    .video-preview-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 10px;
+      background: #eef5f4;
+      color: #607576;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 13px;
+      text-align: center;
+      padding: 12px;
+    }
+
+    .eleaai-cards {
+      display: grid;
+      gap: 14px;
+    }
+
+    .eleaai-card {
+      display: grid;
+      grid-template-columns: 520px minmax(0, 1fr);
+      gap: 16px;
+      padding: 14px;
+      border: 1px solid #d7e7e5;
+      border-radius: 12px;
+      background: #fff;
+      align-items: start;
+    }
+
+    .eleaai-tile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 292px;
+      border: 1px solid #dbe9e8;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #f7fbfb 0%, #eef8f7 100%);
+      overflow: hidden;
+    }
+
+    .eleaai-tile .video-preview-link {
+      display: inline-flex;
+      width: 100%;
+      justify-content: center;
+      line-height: 0;
+      background: transparent;
+      border-radius: 0;
+    }
+
+    .eleaai-tile .video-preview {
+      width: 100%;
+      max-width: 520px;
+      height: auto;
+      display: block;
+      cursor: pointer;
+      border-radius: 8px;
+      background: #0f2021;
+      aspect-ratio: auto;
+    }
+
+    .eleaai-meta {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+      padding: 4px 0;
+    }
+
+    .eleaai-meta-row {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #edf4f3;
+    }
+
+    .eleaai-meta-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .eleaai-meta-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #557071;
+    }
+
+    .eleaai-meta-value {
+      min-width: 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #163233;
+      word-break: break-word;
+    }
+
+    .empty {
+      color: #607576;
+      padding: 10px 6px;
+    }
+
+    @media (max-width: 860px) {
+      .grid,
+      .output-tools {
+        grid-template-columns: 1fr;
+      }
+
+      .eleaai-card {
+        grid-template-columns: 1fr;
+      }
+
+      .eleaai-meta-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+
+      .results.expanded {
+        min-height: calc(100vh - 220px);
+        max-height: calc(100vh - 180px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Live Logs by Tets</h1>
+    <p class="intro">Filter Publica live log endpoints by channel or bidder, or switch to Signal Insight to audit request coverage across query params and OpenRTB paths.</p>
+
+    <div class="status" id="authStatus">Checking auth context...</div>
+
+    <div class="page-tools">
+      <button type="button" class="secondary" id="toggleConfigButton">Hide Config</button>
+    </div>
+
+    <div class="config-section" id="configSection">
+      <div class="grid">
+        <div class="field">
+          <label for="publisherSearchInput">Publisher</label>
+          <input type="text" id="publisherSearchInput" list="publisherSearchList" placeholder="Search by Publisher ID or Publisher Name" autocomplete="off" />
+          <datalist id="publisherSearchList"></datalist>
+          <input type="hidden" id="publisherIdInput" />
+          <div class="publisher-helper" id="publisherHelper">Type to search publishers, then choose one to load Live Logs.</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="entityType">List Type</label>
+          <select id="entityType">
+            <option value="channel">Channel</option>
+            <option value="bidder">Bidder</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="trafficType">Traffic Type</label>
+          <select id="trafficType">
+            <option value="request">Request</option>
+            <option value="response">Response</option>
+            <option value="eleaai">EleaAI</option>
+            <option value="signal">Signal Insight</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid field-section hidden" id="bidderFilterSection">
+        <div class="field hidden" id="bidderDemandSourceField">
+          <label for="bidderDemandSource">Demand Source</label>
+          <select id="bidderDemandSource">
+            <option value="">All Demand Sources</option>
+          </select>
+        </div>
+        <div class="field hidden" id="bidderSignalTypeField">
+          <label for="bidderSignalType">Bidder Type</label>
+          <select id="bidderSignalType">
+            <option value="openrtb">OpenRTB</option>
+            <option value="vast">VAST Tag</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="multi-panel">
+        <div class="multi-header">
+          <div class="multi-title" id="itemTitle">Channels</div>
+          <div class="multi-actions">
+            <button type="button" class="secondary" id="selectAllItems">Select all</button>
+            <button type="button" class="secondary" id="clearItems">Clear</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="itemFilter">Filter List</label>
+          <input type="text" id="itemFilter" placeholder="Type to filter the list..." />
+        </div>
+
+        <div class="field">
+          <label for="itemSelect">Available Items</label>
+          <select id="itemSelect" multiple></select>
+        </div>
+
+        <div class="helper" id="itemHelper">Choose one or more channels.</div>
+      </div>
+
+      <div class="field-selector hidden" id="fieldSelector">
+        <div class="field-selector-title" id="fieldSelectorTitle">Bidder Request Fields</div>
+        <div class="field-selector-options">
+          <div class="field-group hidden" id="channelRequestFieldGroup">
+            <label class="field-option">
+              <input type="checkbox" id="fieldChannelRequestTimestamp" checked />
+              <span>timestamp</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldChannelRequestRequest" checked />
+              <span>request</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldChannelRequestOriginalEndpointUri" />
+              <span>OriginalEndpointURI</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldChannelRequestUserAgent" />
+              <span>User-Agent</span>
+            </label>
+          </div>
+          <div class="field-group hidden" id="channelResponseFieldGroup">
+            <label class="field-option">
+              <input type="checkbox" id="fieldChannelResponseTimestamp" checked />
+              <span>timestamp</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldChannelResponseRequest" checked />
+              <span>request</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldChannelResponseResponse" checked />
+              <span>response</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldChannelResponseVastXml" checked />
+              <span>vastxml</span>
+            </label>
+          </div>
+          <div class="field-group" id="bidderRequestFieldGroup">
+            <label class="field-option">
+              <input type="checkbox" id="fieldRequestTimestamp" checked />
+              <span>timestamp</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldBidderType" checked />
+              <span>bidderType</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldBidRequest" checked />
+              <span>bidRequest</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldEndpointRequest" checked />
+              <span>endpointRequest</span>
+            </label>
+          </div>
+          <div class="field-group hidden" id="bidderResponseFieldGroup">
+            <label class="field-option">
+              <input type="checkbox" id="fieldResponseTimestamp" checked />
+              <span>timestamp</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldResponseBidderType" checked />
+              <span>bidderType</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldResponseBidRequest" checked />
+              <span>bidRequest</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldOriginalBidResponse" checked />
+              <span>original_bid_response</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldOriginalVast" checked />
+              <span>original_vast</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldUnwrappedVast" checked />
+              <span>unwrapped_vast</span>
+            </label>
+          </div>
+          <div class="field-group hidden" id="bidderSignalFieldGroup">
+            <label class="field-option">
+              <input type="checkbox" id="fieldSignalOpenRtbVersion" />
+              <span>openrtb-version</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldSignalBidderType" />
+              <span>bidderType</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldSignalPath" checked />
+              <span>signalpath</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldSignalRecordsWithValue" checked />
+              <span>recordswithvalue</span>
+            </label>
+            <label class="field-option">
+              <input type="checkbox" id="fieldSignalPopulationPct" checked />
+              <span>populationpc</span>
+            </label>
+          </div>
+        </div>
+        <div class="helper" id="fieldSelectorHelper">Choose which fields to include for Bidder + Request output.</div>
+      </div>
+    </div>
+
+    <div class="output-tools">
+      <div class="field">
+        <label for="resultFilter">Filter Output</label>
+        <input type="text" id="resultFilter" placeholder="Filter the loaded output..." />
+      </div>
+
+      <div class="multi-actions">
+        <button type="button" class="secondary" id="exportCsvButton">Export CSV</button>
+        <button type="button" class="secondary" id="appendLogsButton">Append Logs</button>
+        <button type="button" id="loadLogsButton">Load Logs</button>
+      </div>
+    </div>
+
+    <div class="results" id="results"></div>
+  </div>
+
+  <script src="live-logs.js"></script>
+</body>
+</html>

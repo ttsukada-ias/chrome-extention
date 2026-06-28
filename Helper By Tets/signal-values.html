@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Values</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #f6fcfb 0%, #edf8f6 100%);
+      color: #163233;
+      padding: 24px;
+    }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #d7e7e5;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(22, 50, 51, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .meta {
+      margin: 0 0 18px;
+      color: #4b6263;
+      font-size: 14px;
+    }
+
+    .table {
+      display: grid;
+      gap: 8px;
+    }
+
+    .table-header,
+    .table-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 160px;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .table-head {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #dff0ee;
+      color: #163233;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .table-row {
+      border: 1px solid #e3efee;
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .table-cell {
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.45;
+      border-left: 1px solid #eef5f4;
+      word-break: break-word;
+    }
+
+    .table-cell:first-child {
+      border-left: 0;
+      font-family: Menlo, Monaco, Consolas, monospace;
+    }
+
+    .empty {
+      color: #607576;
+      padding: 10px 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1 id="title">Signal Values</h1>
+    <p class="meta" id="meta">Loading signal values...</p>
+    <div id="content"></div>
+  </div>
+
+  <script src="signal-values.js"></script>
+</body>
+</html>

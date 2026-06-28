@@ -1,8 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "RTB Stream Launcher",
-  "version": "1.0.0",
+  "name": "Helper by Tets",
+  "version": "2.0.0",
   "description": "Hosts RTB Stream in a Chrome extension and injects Publica auth context from app.getpublica.com.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": [
     "storage",
     "tabs"
@@ -15,7 +21,13 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "RTB Stream Launcher"
+    "default_title": "Helper by Tets",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
   },
   "content_scripts": [
     {

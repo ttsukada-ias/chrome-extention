@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Creative Review by Tets</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #f6fcfb 0%, #edf8f6 100%);
+      color: #163233;
+      padding: 24px;
+    }
+
+    .page {
+      max-width: 1180px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #d7e7e5;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(22, 50, 51, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+    }
+
+    .intro {
+      margin: 0 0 18px;
+      color: #4b6263;
+      line-height: 1.5;
+    }
+
+    .status {
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #eef8f7;
+      color: #1f7f78;
+      font-weight: 700;
+    }
+
+    .status.warn {
+      background: #fff4e8;
+      color: #a15c00;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cfe1df;
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fff;
+      color: #163233;
+    }
+
+    .field input[list] {
+      width: 100%;
+    }
+
+    .publisher-helper {
+      margin-top: 6px;
+      color: #5d7172;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .panel {
+      border: 1px solid #d7e7e5;
+      border-radius: 14px;
+      padding: 18px;
+      background: #fbfefe;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .page-header-copy {
+      min-width: 0;
+    }
+
+    .config-toggle {
+      width: auto;
+      flex: 0 0 auto;
+      padding: 10px 14px;
+      border: 1px solid #cfe1df;
+      border-radius: 10px;
+      background: #e9f5f3;
+      color: #1b4f50;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .config-toggle:hover {
+      background: #dff0ed;
+    }
+
+    .config-section[hidden] {
+      display: none !important;
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .helper {
+      color: #607576;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .meta-controls {
+      margin: 16px 0 18px;
+      padding: 14px 16px;
+      border: 1px solid #d7e7e5;
+      border-radius: 14px;
+      background: #fbfefe;
+    }
+
+    .meta-controls h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .checkbox-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+    }
+
+    .checkbox-grid label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #163233;
+      cursor: pointer;
+    }
+
+    .filter-bar {
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border: 1px solid #d7e7e5;
+      border-radius: 14px;
+      background: #fbfefe;
+    }
+
+    .filter-bar h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .filter-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .results-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .results-count {
+      color: #4b6263;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .results-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .page-label {
+      color: #4b6263;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .button {
+      appearance: none;
+      border: 1px solid #cfe1df;
+      background: #e9f5f3;
+      color: #1b4f50;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background: #dff0ed;
+    }
+
+    .button:disabled {
+      background: #eef3f3;
+      color: #8ca2a3;
+      border-color: #d9e5e5;
+      cursor: not-allowed;
+    }
+
+    .cards {
+      display: grid;
+      gap: 14px;
+    }
+
+    .review-card {
+      display: grid;
+      grid-template-columns: 440px minmax(0, 1fr);
+      gap: 16px;
+      padding: 14px;
+      border: 1px solid #d7e7e5;
+      border-radius: 12px;
+      background: #fff;
+      align-items: start;
+    }
+
+    .creative-tile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 248px;
+      border: 1px solid #dbe9e8;
+      border-radius: 10px;
+      background: linear-gradient(180deg, #f7fbfb 0%, #eef8f7 100%);
+      overflow: hidden;
+    }
+
+    .creative-tile a {
+      display: inline-flex;
+      width: 100%;
+      justify-content: center;
+      line-height: 0;
+    }
+
+    .creative-tile video {
+      width: 100%;
+      max-width: 440px;
+      height: auto;
+      display: block;
+      cursor: pointer;
+      border-radius: 8px;
+      background: #0f2021;
+    }
+
+    .creative-placeholder {
+      padding: 14px;
+      color: #607576;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .metadata {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .review-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding-top: 4px;
+    }
+
+    .meta-input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #cfe1df;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #163233;
+      background: #fff;
+    }
+
+    .button.update {
+      background: #eef8f7;
+      border-color: #cfe1df;
+      color: #1b4f50;
+    }
+
+    .button.update:hover {
+      background: #dff0ed;
+    }
+
+    .button.allow {
+      background: #e6f6ee;
+      border-color: #c8e7d6;
+      color: #166642;
+    }
+
+    .button.allow:hover {
+      background: #d8f0e3;
+    }
+
+    .button.block {
+      background: #fdeceb;
+      border-color: #f2d1cf;
+      color: #9a2f2b;
+    }
+
+    .button.block:hover {
+      background: #f9dfdd;
+    }
+
+    .button.reviewed {
+      background: #eef2fb;
+      border-color: #d8def0;
+      color: #35528e;
+    }
+
+    .button.reviewed:hover {
+      background: #e4ebf8;
+    }
+
+    .button.unreviewed {
+      background: #f5f1fb;
+      border-color: #e2daf3;
+      color: #644198;
+    }
+
+    .button.unreviewed:hover {
+      background: #ece4f9;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 180px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #edf4f3;
+    }
+
+    .meta-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .meta-label {
+      color: #557071;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .meta-value {
+      color: #163233;
+      font-size: 14px;
+      line-height: 1.45;
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .meta-value a {
+      color: #12746f;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .meta-value a:hover {
+      text-decoration: underline;
+    }
+
+    .empty-state {
+      padding: 18px;
+      color: #607576;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .filter-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .review-card {
+        grid-template-columns: 1fr;
+      }
+
+      .meta-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <div class="page-header-copy">
+        <h1>Creative Review by Tets</h1>
+        <p class="intro">Start a creative review session by narrowing the scope to a publisher, channel, and bidder.</p>
+      </div>
+      <button type="button" class="config-toggle" id="configToggleButton">Hide Config</button>
+    </div>
+
+    <div class="status" id="authStatus">Checking auth context...</div>
+
+    <div class="grid config-section" id="configScopeSection">
+      <div class="field">
+        <label for="publisherSearchInput">Publisher</label>
+        <input type="text" id="publisherSearchInput" list="publisherSearchList" placeholder="Search by Publisher ID or Publisher Name" autocomplete="off" />
+        <datalist id="publisherSearchList"></datalist>
+        <input type="hidden" id="publisherIdInput" />
+        <div class="publisher-helper" id="publisherHelper">Type to search publishers, then choose one to load creative review filters.</div>
+      </div>
+      <div class="field">
+        <label for="reviewStatusScope">Status</label>
+        <select id="reviewStatusScope">
+          <option value="0">Unreviewed</option>
+          <option value="1">Reviewed</option>
+          <option value="2">Blocked</option>
+          <option value="3">Allowed</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="filter-bar config-section" id="configFilterSection">
+      <h2>Filters</h2>
+      <div class="filter-grid">
+        <div class="field">
+          <label for="channelFilter">Channel</label>
+          <select id="channelFilter">
+            <option value="">All Channels</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="bidderFilter">Bidder</label>
+          <select id="bidderFilter">
+            <option value="">All Bidders</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="reviewedByFilter">Reviewed By</label>
+          <select id="reviewedByFilter">
+            <option value="">All Reviewed By</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="adomainFilter">Adomain</label>
+          <select id="adomainFilter">
+            <option value="">All Adomains</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="demandSourceFilter">Demand Source</label>
+          <select id="demandSourceFilter">
+            <option value="">All Demand Sources</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="bidderGroupFilter">Bidder Group</label>
+          <select id="bidderGroupFilter">
+            <option value="">All Bidder Groups</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="bidderTierFilter">Bidder Tier</label>
+          <select id="bidderTierFilter">
+            <option value="">All Bidder Tiers</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="categoryFilter">IAB Category</label>
+          <select id="categoryFilter">
+            <option value="">All IAB Categories</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="enrichedByAdomainFilter">Enriched by Adomain</label>
+          <select id="enrichedByAdomainFilter">
+            <option value="">All</option>
+            <option value="true">True</option>
+            <option value="false">False</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="enrichedByCategoryFilter">Enriched by Category</label>
+          <select id="enrichedByCategoryFilter">
+            <option value="">All</option>
+            <option value="true">True</option>
+            <option value="false">False</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-actions">
+        <button type="button" class="button" id="clearReviewFiltersButton">Clear</button>
+        <button type="button" class="button" id="applyReviewFiltersButton">Apply</button>
+      </div>
+    </div>
+
+    <div class="meta-controls config-section" id="configMetaSection">
+      <h2>Metadata Fields</h2>
+      <div class="checkbox-grid" id="metaFieldSelection">
+        <label><input type="checkbox" value="BidderID" checked /> Bidder ID</label>
+        <label><input type="checkbox" value="BidderName" checked /> Bidder Name</label>
+        <label><input type="checkbox" value="ReviewStatus" checked /> Review Status</label>
+        <label><input type="checkbox" value="CreativeURL" checked /> Creative URL</label>
+        <label><input type="checkbox" value="Adomain" checked /> Adomain</label>
+        <label><input type="checkbox" value="EnrichedByAdomain" checked /> Enriched by Adomain</label>
+        <label><input type="checkbox" value="IABCategory" checked /> IAB Category</label>
+        <label><input type="checkbox" value="EnrichedByCategory" checked /> Enriched by Category</label>
+        <label><input type="checkbox" value="TotalCount" checked /> Total Count</label>
+        <label><input type="checkbox" value="Impressions" checked /> Impressions</label>
+        <label><input type="checkbox" value="BidErrorBlockedResponses" checked /> Bid Error Blocked Responses</label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Creative Review</h2>
+      <p class="helper" id="reviewSummary">Choose a publisher to load channels, bidders, and creative review results.</p>
+      <div class="results-toolbar">
+        <div class="results-count" id="resultsCount">No creatives loaded yet.</div>
+        <div class="results-actions">
+          <button type="button" class="button" id="exportCsvButton">Export CSV</button>
+          <div class="page-label" id="pageLabel">Page 1</div>
+          <button type="button" class="button" id="previousPageButton">Previous Page</button>
+          <button type="button" class="button" id="nextPageButton">Next Page</button>
+        </div>
+      </div>
+      <div class="cards" id="resultsBody">
+        <div class="empty-state">No creative review data loaded yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="creative-review.js"></script>
+</body>
+</html>

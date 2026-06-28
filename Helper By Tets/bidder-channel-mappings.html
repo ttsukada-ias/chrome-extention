@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Channel/Bidder Mappings by Tets</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #f6fcfb 0%, #edf8f6 100%);
+      color: #163233;
+      padding: 24px;
+    }
+
+    .page {
+      max-width: 1380px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #d7e7e5;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(22, 50, 51, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+    }
+
+    .intro {
+      margin: 0 0 18px;
+      color: #4b6263;
+      line-height: 1.5;
+    }
+
+    .status {
+      margin-bottom: 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #eef8f7;
+      color: #1f7f78;
+      font-weight: 700;
+    }
+
+    .status.warn {
+      background: #fff4e8;
+      color: #a15c00;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(260px, 1.6fr) repeat(8, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cfe1df;
+      border-radius: 10px;
+      font-size: 14px;
+      background: #fff;
+      color: #163233;
+    }
+
+    .field input[list] {
+      width: 100%;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: #0d6e8a;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .field-selection-wrap {
+      margin: -2px 0 18px;
+      padding: 12px;
+      border: 1px solid #d7e7e5;
+      border-radius: 12px;
+      background: #fbfefe;
+    }
+
+    .field-selection-title {
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #163233;
+    }
+
+    .field-selection {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .field-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 32px;
+      padding: 6px 10px;
+      border: 1px solid #d7e7e5;
+      border-radius: 8px;
+      background: #fff;
+      color: #285153;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .field-toggle input {
+      margin: 0;
+      accent-color: #0d6e8a;
+    }
+
+    .results {
+      border: 1px solid #d7e7e5;
+      border-radius: 14px;
+      background: #fbfefe;
+      min-height: 320px;
+      max-height: 72vh;
+      overflow: auto;
+      padding: 10px;
+    }
+
+    .results-table {
+      min-width: 100%;
+    }
+
+    .results-table-header,
+    .results-table-row {
+      display: grid;
+      grid-template-columns: minmax(320px, 1.45fr) minmax(460px, 1.95fr) 130px;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .results-table-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      margin-bottom: 8px;
+      padding: 0 2px;
+      background: #fbfefe;
+    }
+
+    .results-table-head {
+      border-radius: 10px;
+      background: #dff0ee;
+      color: #163233;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .sort-button {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      width: 100%;
+      min-height: 36px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      letter-spacing: inherit;
+      text-align: left;
+      text-transform: inherit;
+      cursor: pointer;
+    }
+
+    .sort-button:hover,
+    .sort-button:focus-visible {
+      background: #cfe6e3;
+      outline: none;
+    }
+
+    .sort-indicator {
+      flex: 0 0 auto;
+      color: #0d6e8a;
+      font-size: 11px;
+      line-height: 1;
+    }
+
+    .results-table-row {
+      border: 1px solid #e3efee;
+      border-radius: 10px;
+      background: #fff;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .results-table-cell {
+      padding: 10px 12px;
+      min-width: 0;
+      border-left: 1px solid #eef5f4;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .results-table-cell:first-child {
+      border-left: 0;
+    }
+
+    .channel-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0d6e8a;
+      margin-bottom: 4px;
+    }
+
+    .channel-link,
+    .bidder-link {
+      color: inherit;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .channel-meta {
+      color: #607576;
+      font-size: 12px;
+    }
+
+    .bidder-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .bidder-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef8f7;
+      border: 1px solid #d7e7e5;
+      color: #285153;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .bidder-chip strong {
+      color: #163233;
+    }
+
+    .metric {
+      font-weight: 800;
+      color: #163233;
+    }
+
+    .empty {
+      color: #607576;
+      padding: 10px 6px;
+    }
+
+    @media (max-width: 980px) {
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .results-table-header,
+      .results-table-row {
+        grid-template-columns: 1fr !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>Channel/Bidder Mappings by Tets</h1>
+    <p class="intro">Review bidder and channel relationships from a channel-first view. Filter by channel or bidder, then scan which bidders are mapped to each channel.</p>
+
+    <div class="status" id="authStatus">Checking auth context...</div>
+
+    <div class="toolbar">
+      <div class="field">
+        <label for="publisherSearchInput">Publisher</label>
+        <input type="text" id="publisherSearchInput" list="publisherSearchList" placeholder="Search by Publisher ID or Publisher Name" autocomplete="off" />
+        <datalist id="publisherSearchList"></datalist>
+        <input type="hidden" id="publisherIdInput" />
+      </div>
+      <div class="field">
+        <label for="mappingModeFilter">Mapping</label>
+        <select id="mappingModeFilter">
+          <option value="channel_to_bidder" selected>Channel to Bidder</option>
+          <option value="bidder_to_channel">Bidder to Channel</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="channelFilter">Channel</label>
+        <select id="channelFilter">
+          <option value="">All Channels</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="channelGroupFilter">Channel Group</label>
+        <select id="channelGroupFilter">
+          <option value="">All Channel Groups</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="bidderFilter">Bidder</label>
+        <select id="bidderFilter">
+          <option value="">All Bidders</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="demandSourceFilter">Demand Source</label>
+        <select id="demandSourceFilter">
+          <option value="">All Demand Sources</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter">
+          <option value="active" selected>Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="">All</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="resultFilter">Search</label>
+        <input type="text" id="resultFilter" placeholder="Search by channel or bidder..." />
+      </div>
+      <div class="field">
+        <label for="exportButton">Export</label>
+        <button type="button" id="exportButton">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="field-selection-wrap">
+      <div class="field-selection-title">Fields</div>
+      <div class="field-selection" id="fieldSelection"></div>
+    </div>
+
+    <div class="results" id="results"></div>
+  </div>
+
+  <script src="bidder-channel-mappings.js"></script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log Viewer</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #f6fcfb 0%, #edf8f6 100%);
+      color: #163233;
+      padding: 24px;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #d7e7e5;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(22, 50, 51, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .meta {
+      margin: 0 0 18px;
+      color: #4b6263;
+      font-size: 14px;
+    }
+
+    .viewer-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: -6px 0 12px;
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      padding: 3px;
+      border: 1px solid #d7e7e5;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .view-toggle[hidden] {
+      display: none;
+    }
+
+    .view-toggle .viewer-button {
+      border-color: transparent;
+      background: transparent;
+      min-height: 30px;
+      padding: 8px 10px;
+    }
+
+    .view-toggle .viewer-button.active {
+      background: #e9f8f6;
+      border-color: #a8ccca;
+    }
+
+    .viewer-button {
+      appearance: none;
+      border: 1px solid #a8ccca;
+      border-radius: 8px;
+      background: #e9f8f6;
+      color: #163233;
+      cursor: pointer;
+      font: 700 13px/1 Arial, Helvetica, sans-serif;
+      min-height: 34px;
+      padding: 9px 14px;
+    }
+
+    .viewer-button:hover {
+      background: #d9f1ee;
+      border-color: #78b9b5;
+    }
+
+    .viewer-button[hidden] {
+      display: none;
+    }
+
+    .output-wrap {
+      margin: 0;
+      min-height: 420px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid #d7e7e5;
+      background: #fbfefe;
+      color: #163233;
+      overflow: auto;
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .tree-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      min-height: 24px;
+      white-space: nowrap;
+    }
+
+    .tree-toggle {
+      width: 20px;
+      min-width: 20px;
+      min-height: 20px;
+      height: 20px;
+      padding: 0;
+      border-radius: 5px;
+      font: 700 13px/18px Menlo, Monaco, Consolas, monospace;
+      text-align: center;
+    }
+
+    .tree-spacer {
+      width: 20px;
+      min-width: 20px;
+    }
+
+    .tree-children {
+      margin-left: 27px;
+    }
+
+    .tree-node.collapsed > .tree-children {
+      display: none;
+    }
+
+    .tree-label {
+      color: #163233;
+      font-weight: 700;
+    }
+
+    .tree-attribute {
+      color: #255c58;
+    }
+
+    .tree-summary {
+      color: #4b6263;
+    }
+
+    .tree-value {
+      color: #255c58;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .plain-output {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: inherit;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1 id="title">Log Viewer</h1>
+    <p class="meta" id="meta">Loading entry...</p>
+    <div class="viewer-toolbar">
+      <div class="view-toggle" id="viewToggle" aria-label="Output view" hidden>
+        <button type="button" class="viewer-button" id="structuredViewButton">Structured</button>
+        <button type="button" class="viewer-button active" id="plainViewButton">Plain Text</button>
+      </div>
+      <button type="button" class="viewer-button" id="beautifyButton" hidden>Beautify</button>
+      <button type="button" class="viewer-button" id="copyButton" disabled>Copy</button>
+    </div>
+    <div class="output-wrap" id="content"></div>
+  </div>
+
+  <script src="structured-output.js"></script>
+  <script src="log-viewer.js"></script>
+</body>
+</html>

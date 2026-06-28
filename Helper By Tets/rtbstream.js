@@ -118,11 +118,6 @@
     return Array.from(found).sort((a, b) => a.localeCompare(b));
   }
 
-  function setDemandSourceStatus(message) {
-    const statusEl = document.getElementById("demandSourceStatus");
-    if (statusEl) statusEl.textContent = message || "";
-  }
-
   function renderDemandSourceOptions(nextDemandSources = knownDemandSources) {
     const demandSourceSelect = document.getElementById("demandSourceSelect");
     if (!demandSourceSelect) return;
@@ -157,20 +152,11 @@
 
   function syncDemandSourceControls() {
     const streamType = getSelectedStreamType();
-    const populateBtn = document.getElementById("populateDemandSourcesButton");
     const demandSourceSelect = document.getElementById("demandSourceSelect");
     const demandSourceLabel = document.querySelector('label[for="demandSourceSelect"]');
-    const demandSourceStatus = document.getElementById("demandSourceStatus");
     const fieldHelp = demandSourceSelect?.parentElement?.querySelector(".field-help");
-    const hasSites = getSelectedSiteUuids().length > 0;
-    const canPopulate = isTokenValid() && hasSites;
     const hasOptions = knownDemandSources.length > 0;
     const visible = streamType === "creative";
-
-    if (populateBtn) {
-      populateBtn.disabled = !canPopulate;
-      populateBtn.style.display = visible ? "" : "none";
-    }
 
     if (demandSourceSelect) {
       demandSourceSelect.disabled = !visible || !hasOptions;
@@ -178,7 +164,6 @@
 
     if (demandSourceLabel) demandSourceLabel.style.display = visible ? "" : "none";
     if (demandSourceSelect) demandSourceSelect.style.display = visible ? "" : "none";
-    if (demandSourceStatus) demandSourceStatus.style.display = visible ? "" : "none";
     if (fieldHelp) fieldHelp.style.display = visible ? "" : "none";
   }
 
@@ -202,11 +187,7 @@
   const MAX_PROCESSED_UUIDS = 10000;
 
   let accessToken = null;
-  let refreshToken = null;      // ✅ NEW: store refresh token
   let tokenExpiresAtMs = 0;
-
-  // ✅ NEW: avoid multiple refresh calls in parallel
-  let refreshInFlight = null;
 
   let currentFetchTimestamp = 0;
   let sitesByUuid = new Map();
@@ -217,6 +198,9 @@
   let fetchLoopId = 0;
   let waitingForFirstRender = false;
   let knownDemandSources = [];
+  let publisherSearchTimer = null;
+  let publisherSearchResults = [];
+  let bootstrapPublisherId = "";
 
   const sitePollTimers = new Map();
   const activeSiteLoops = new Map();
@@ -253,7 +237,6 @@
   }
 
   function syncButtonStates() {
-    setBtnActive("authButton", isTokenValid(), "is-active");
     setBtnActive("fetchDataButton", isFetching && !stopRequested, "is-active");
     setBtnActive("pauseButton", isPaused, "is-active");
     setBtnActive("stopFetchButton", (stopRequested || !isFetching), "is-danger");
@@ -333,6 +316,167 @@
     return document.getElementById("publisherIdAuth").value.trim();
   }
 
+  function getPublisherSearchInput() {
+    return document.getElementById("publisherSearchInput")?.value.trim() || "";
+  }
+
+  function setPublisherId(value) {
+    const field = document.getElementById("publisherIdAuth");
+    if (field) field.value = `${value || ""}`.trim();
+  }
+
+  function setPublisherHelper(text) {
+    const helper = document.getElementById("publisherHelper");
+    if (helper) helper.textContent = text || "";
+  }
+
+  function formatPublisherOption(publisher) {
+    const id = `${publisher?.id ?? ""}`.trim();
+    const name = `${publisher?.name || ""}`.trim();
+    return id && name ? `[${id}] ${name}` : "";
+  }
+
+  function renderPublisherSearchOptions(items = []) {
+    const list = document.getElementById("publisherSearchList");
+    if (!list) return;
+
+    list.innerHTML = "";
+    items.forEach(item => {
+      const option = document.createElement("option");
+      option.value = formatPublisherOption(item);
+      list.appendChild(option);
+    });
+  }
+
+  function syncPublisherSelectionFromInput() {
+    const inputValue = getPublisherSearchInput();
+    const matchedPublisher = publisherSearchResults.find(item => formatPublisherOption(item) === inputValue);
+
+    if (matchedPublisher) {
+      setPublisherId(matchedPublisher.id);
+      setPublisherHelper(`Selected publisher: ${formatPublisherOption(matchedPublisher)}`);
+      return true;
+    }
+
+    if (/^\d+$/.test(inputValue)) {
+      setPublisherId(inputValue);
+      setPublisherHelper(`Selected publisher ID: ${inputValue}`);
+      return true;
+    }
+
+    return false;
+  }
+
+  async function searchPublishers(query) {
+    await ensureValidToken();
+
+    const contextPublisherId = getPublisherId() || bootstrapPublisherId;
+    if (!contextPublisherId) {
+      throw new Error("Missing publisher ID.");
+    }
+
+    const url =
+      `https://api.getpublica.com/v1/settings/publishers_names` +
+      `?access_token=${encodeURIComponent(accessToken)}` +
+      `&publisher_id=${encodeURIComponent(contextPublisherId)}` +
+      `&query=${encodeURIComponent(query)}`;
+
+    const response = await fetchWithAutoRefresh(() => fetch(url, { method: "GET" }));
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`Publisher search failed: ${response.status} ${text}`);
+    }
+
+    const json = await response.json();
+    return Array.isArray(json) ? json : [];
+  }
+
+  async function resolvePublisherDisplay(publisherIdValue) {
+    const resolvedPublisherId = `${publisherIdValue || ""}`.trim();
+    if (!resolvedPublisherId || !accessToken) {
+      return;
+    }
+
+    try {
+      const results = await searchPublishers(resolvedPublisherId);
+      publisherSearchResults = results;
+      renderPublisherSearchOptions(results);
+
+      const matchedPublisher = results.find(item => `${item?.id ?? ""}`.trim() === resolvedPublisherId);
+      if (matchedPublisher) {
+        const formatted = formatPublisherOption(matchedPublisher);
+        const searchField = document.getElementById("publisherSearchInput");
+        if (searchField) searchField.value = formatted;
+        setPublisherId(matchedPublisher.id);
+        setPublisherHelper(`Selected publisher: ${formatted}`);
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to resolve publisher display", error);
+    }
+
+    const searchField = document.getElementById("publisherSearchInput");
+    if (searchField) searchField.value = resolvedPublisherId;
+    setPublisherId(resolvedPublisherId);
+    setPublisherHelper(`Selected publisher ID: ${resolvedPublisherId}`);
+  }
+
+  async function handlePublisherSearchInput() {
+    const query = getPublisherSearchInput();
+
+    if (publisherSearchTimer) {
+      clearTimeout(publisherSearchTimer);
+      publisherSearchTimer = null;
+    }
+
+    if (!query) {
+      publisherSearchResults = [];
+      renderPublisherSearchOptions([]);
+      setPublisherId("");
+      setPublisherHelper("Type to search publishers, then choose one to load sites.");
+      return;
+    }
+
+    if (syncPublisherSelectionFromInput()) {
+      return;
+    }
+
+    publisherSearchTimer = setTimeout(async () => {
+      try {
+        const results = await searchPublishers(query);
+        publisherSearchResults = results;
+        renderPublisherSearchOptions(results);
+        setPublisherHelper(results.length
+          ? `Found ${results.length} publisher${results.length === 1 ? "" : "s"}. Keep typing to narrow the list.`
+          : "No matching publishers found yet.");
+      } catch (error) {
+        console.error("Failed to search publishers", error);
+        setPublisherHelper(String(error?.message || error));
+      }
+    }, 250);
+  }
+
+  async function handlePublisherSelectionChange() {
+    if (!syncPublisherSelectionFromInput()) {
+      return;
+    }
+
+    if (!getPublisherId() || !isTokenValid()) {
+      syncButtonStates();
+      return;
+    }
+
+    try {
+      await loadSitesForCurrentContext();
+      await refreshCreativeDemandSources();
+    } catch (e) {
+      console.error(e);
+      alert(String(e?.message || e));
+    } finally {
+      syncButtonStates();
+    }
+  }
+
   function getBootstrapQueryValue(key) {
     try {
       return new URLSearchParams(window.location.search).get(key)?.trim() || "";
@@ -341,30 +485,14 @@
     }
   }
 
-  function getManualAccessToken() {
-    return document.getElementById("authAccessToken")?.value.trim() || "";
-  }
-
-  function setTokenStatus(text) {
-    document.getElementById("tokenStatus").textContent = text;
-  }
-
-  // treat token as valid if it won't expire in the next 10s
   function isTokenValid() {
     return !!accessToken && Date.now() < (tokenExpiresAtMs - 10_000);
-  }
-
-  function hasRefreshToken() {
-    return !!refreshToken;
   }
 
   function handleAuthFailure(message) {
     console.warn(message || "Auth failure");
     accessToken = null;
-    refreshToken = null;
     tokenExpiresAtMs = 0;
-
-    setTokenStatus("Token: (not authenticated)");
     syncButtonStates();
 
     // stop everything if running
@@ -380,150 +508,24 @@
     if (stopBtn) stopBtn.disabled = true;
   }
 
-  async function refreshAccessToken() {
-    if (!hasRefreshToken()) {
-      throw new Error("No refresh token available. Please authenticate again.");
-    }
-
-    if (refreshInFlight) return refreshInFlight;
-
-    refreshInFlight = (async () => {
-      const tokenUrl = "https://api.getpublica.com/v1/oauth/tokens";
-      const body = new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-        reseller_id: "-1"
-      });
-
-      setTokenStatus("Token: refreshing...");
-      syncButtonStates();
-
-      const resp = await fetch(tokenUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString()
-      });
-
-      if (!resp.ok) {
-        const t = await resp.text().catch(() => "");
-        throw new Error(`Refresh failed: ${resp.status} ${t}`);
-      }
-
-      const json = await resp.json();
-
-      if (!json.access_token) throw new Error("Refresh response missing access_token");
-
-      accessToken = json.access_token;
-      // refresh token may rotate — if returned, replace it
-      if (json.refresh_token) refreshToken = json.refresh_token;
-
-      tokenExpiresAtMs = Date.now() + (Number(json.expires_in || 3600) * 1000);
-
-      setTokenStatus(`Token: OK (refreshed, expires ${new Date(tokenExpiresAtMs).toLocaleString()})`);
-      syncButtonStates();
-
-      return accessToken;
-    })();
-
-    try {
-      return await refreshInFlight;
-    } finally {
-      refreshInFlight = null;
-    }
-  }
-
-  // Ensures we have a usable token; refreshes if needed/near expiry
   async function ensureValidToken() {
     if (isTokenValid()) return accessToken;
-
-    if (hasRefreshToken()) {
-      return await refreshAccessToken();
-    }
-
-    throw new Error("Token expired and no refresh token. Please authenticate again.");
+    throw new Error("Missing or expired token. Reopen RTB Stream from Publica.");
   }
 
-  // A small helper that retries once on 401 by refreshing the token
   async function fetchWithAutoRefresh(makeRequestFn) {
-    // makeRequestFn should create and execute fetch using the CURRENT accessToken
-    let resp = await makeRequestFn();
-    if (resp.status !== 401) return resp;
-
-    // try refresh + retry once
-    try {
-      await refreshAccessToken();
-    } catch (e) {
-      throw e;
+    const resp = await makeRequestFn();
+    if (resp.status === 401) {
+      handleAuthFailure("Token expired. Reopen RTB Stream from Publica.");
+      throw new Error("Unauthorized. Reopen RTB Stream from Publica.");
     }
-
-    resp = await makeRequestFn();
     return resp;
   }
 
-  async function authenticateAndLoadSites() {
+  async function loadSitesForCurrentContext() {
     const publisherId = getPublisherId();
-    const username = document.getElementById("authUsername").value.trim();
-    const password = document.getElementById("authPassword").value;
-    const manualAccessToken = getManualAccessToken();
 
     if (!publisherId) { alert("Please enter Publisher ID."); throw new Error("Missing publisher_id"); }
-
-    if (manualAccessToken) {
-      accessToken = manualAccessToken;
-      refreshToken = null;
-      tokenExpiresAtMs = Date.now() + (12 * 60 * 60 * 1000);
-      setTokenStatus("Token: OK (manual access token)");
-      syncButtonStates();
-      await loadSitesDropdown();
-      return;
-    }
-
-    if (!username || !password) { alert("Please enter username and password, or paste an access token."); throw new Error("Missing credentials"); }
-
-    const tokenUrl = "https://api.getpublica.com/v1/oauth/tokens";
-    const tokenBody = new URLSearchParams({
-      grant_type: "password",
-      username,
-      password,
-      reseller_id: "-1"
-    });
-
-    setTokenStatus("Token: authenticating...");
-    syncButtonStates();
-
-    const tokenResp = await fetch(tokenUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: tokenBody.toString()
-    });
-
-    if (!tokenResp.ok) {
-      const t = await tokenResp.text().catch(() => "");
-      setTokenStatus(`Token: failed (${tokenResp.status})`);
-      accessToken = null;
-      refreshToken = null;
-      tokenExpiresAtMs = 0;
-      syncButtonStates();
-      throw new Error(`Auth failed: ${tokenResp.status} ${t}`);
-    }
-
-    const tokenJson = await tokenResp.json();
-    if (!tokenJson.access_token) {
-      setTokenStatus("Token: invalid response");
-      accessToken = null;
-      refreshToken = null;
-      tokenExpiresAtMs = 0;
-      syncButtonStates();
-      throw new Error("No access_token in response");
-    }
-
-    accessToken = tokenJson.access_token;
-    refreshToken = tokenJson.refresh_token || refreshToken || null; // ✅ capture refresh token
-    tokenExpiresAtMs = Date.now() + (Number(tokenJson.expires_in || 3600) * 1000);
-
-    setTokenStatus(`Token: OK (expires ${new Date(tokenExpiresAtMs).toLocaleString()})`);
-    syncButtonStates();
-
     await loadSitesDropdown();
   }
 
@@ -566,7 +568,6 @@
     siteProcessedUUIDs.clear();
     siteLastSeenTimestamps.clear();
     renderDemandSourceOptions([]);
-    setDemandSourceStatus("Select site(s), then populate the list.");
     siteSelect.innerHTML = "";
 
     if (sites.length === 0) {
@@ -587,6 +588,97 @@
 
     siteFilterInput.value = "";
     renderSiteOptions();
+  }
+
+  async function loadDemandSourcesFromBidders() {
+    const publisherId = getPublisherId();
+    const siteUuids = getSelectedSiteUuids();
+
+    if (!publisherId) {
+      alert("Missing Publisher ID.");
+      throw new Error("Missing publisher_id");
+    }
+
+    await ensureValidToken();
+
+    const selectedSiteIds = new Set(
+      siteUuids
+        .map(siteUuid => sitesByUuid.get(siteUuid)?.id)
+        .filter(siteId => Number.isFinite(siteId))
+    );
+
+    const makeUrl = () =>
+      `https://api.getpublica.com/v2/settings/bidders` +
+      `?access_token=${encodeURIComponent(accessToken)}` +
+      `&publisher_id=${encodeURIComponent(publisherId)}` +
+      `&bidder_params_search=` +
+      `&page_size=1000` +
+      `&bidder_group_ids=` +
+      `&page=0` +
+      `&search=` +
+      `&id_search=` +
+      `&order_by=past_week_revenue` +
+      `&order_direction=desc` +
+      `&demand_sources=` +
+      `&bidder_labels=` +
+      `&priority=` +
+      `&active=2`;
+
+    const payload = {
+      selectedChannelIds: [],
+      preloads: ["SiteIDS", "ChannelGroupIDS", "HeaderBidderPastWeekSummary", "BidderLabels"],
+      uiFields: [
+        "id",
+        "name",
+        "active",
+        "bidder",
+        "priority",
+        "flexible_bidding_enabled",
+        "flexible_bidding_thresholds",
+        "super_only",
+        "created_at",
+        "updated_at"
+      ]
+    };
+
+    const response = await fetchWithAutoRefresh(() => fetch(makeUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }));
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`Demand sources fetch failed: ${response.status} ${text}`);
+    }
+
+    const json = await response.json();
+    const bidderInfos = Array.isArray(json?.HeaderBidderListInfo) ? json.HeaderBidderListInfo : [];
+
+    const matchingDemandSources = bidderInfos
+      .filter(info => {
+        const siteIds = Array.isArray(info?.SiteIDS) ? info.SiteIDS : [];
+        if (selectedSiteIds.size === 0) return true;
+        return siteIds.some(siteId => selectedSiteIds.has(siteId));
+      })
+      .map(info => `${info?.Bidder || ""}`.trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(matchingDemandSources)).sort((a, b) => a.localeCompare(b));
+  }
+
+  async function refreshCreativeDemandSources() {
+    if (getSelectedStreamType() !== "creative") {
+      renderDemandSourceOptions([]);
+      return;
+    }
+
+    if (!getPublisherId() || !isTokenValid()) {
+      renderDemandSourceOptions([]);
+      return;
+    }
+
+    const demandSources = await loadDemandSourcesFromBidders();
+    renderDemandSourceOptions(demandSources);
   }
 
   function renderSiteOptions() {
@@ -631,27 +723,18 @@
   // ----------------------------
   // BUTTON HANDLERS
   // ----------------------------
-  document.getElementById("authButton").addEventListener("click", async () => {
-    try {
-      await authenticateAndLoadSites();
-    } catch (e) {
-      console.error(e);
-      alert(String(e?.message || e));
-    } finally {
-      syncButtonStates();
-    }
-  });
-
   document.getElementById("selectAllSitesBtn").addEventListener("click", () => {
     const siteSelect = document.getElementById("siteSelect");
     Array.from(siteSelect.options).forEach(o => { o.selected = true; });
     syncDemandSourceControls();
+    refreshCreativeDemandSources().catch(error => console.error("Failed to refresh demand sources", error));
   });
 
   document.getElementById("clearSitesBtn").addEventListener("click", () => {
     const siteSelect = document.getElementById("siteSelect");
     Array.from(siteSelect.options).forEach(o => { o.selected = false; });
     syncDemandSourceControls();
+    refreshCreativeDemandSources().catch(error => console.error("Failed to refresh demand sources", error));
   });
 
   document.getElementById("siteFilterInput").addEventListener("input", () => {
@@ -660,67 +743,20 @@
 
   document.getElementById("siteSelect").addEventListener("change", () => {
     syncDemandSourceControls();
+    refreshCreativeDemandSources().catch(error => console.error("Failed to refresh demand sources", error));
   });
 
-  document.getElementById("populateDemandSourcesButton").addEventListener("click", async () => {
-    try {
-      await ensureValidToken();
-    } catch (e) {
-      alert("Please Authenticate first (token missing/expired and cannot refresh).");
-      syncButtonStates();
-      return;
-    }
+  document.getElementById("publisherSearchInput").addEventListener("input", () => {
+    handlePublisherSearchInput().catch(error => {
+      console.error("Failed to handle publisher search input", error);
+    });
+  });
 
-    const publisherId = getPublisherId();
-    const siteUuids = getSelectedSiteUuids();
-
-    if (!publisherId) { alert("Missing Publisher ID."); syncButtonStates(); return; }
-    if (siteUuids.length === 0) { alert("Please select one or more Sites."); syncButtonStates(); return; }
-
-    setDemandSourceStatus("Loading demand sources...");
-
-    const discoveredDemandSources = new Set();
-
-    try {
-      await runWithConcurrency(siteUuids, MAX_PARALLEL_SITES, async (siteUuid) => {
-        const payload = { type: 3028, site_uuid: siteUuid };
-        const makeUrl = () =>
-          `https://api.getpublica.com/v1/settings/live_logs` +
-          `?access_token=${encodeURIComponent(accessToken)}` +
-          `&publisher_id=${encodeURIComponent(publisherId)}`;
-
-        const makeReq = () => fetch(makeUrl(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        const response = await fetchWithAutoRefresh(makeReq);
-        if (!response.ok) {
-          if (response.status === 401) {
-            handleAuthFailure("401 even after refresh. Please authenticate again.");
-            throw new Error("Unauthorized even after refresh. Please Authenticate again.");
-          }
-          throw new Error(`${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        collectDemandSourcesFromLogs(data).forEach(source => discoveredDemandSources.add(source));
-      }, { requireActiveFetch: false });
-
-      renderDemandSourceOptions(Array.from(discoveredDemandSources));
-      setDemandSourceStatus(
-        discoveredDemandSources.size > 0
-          ? `Loaded ${discoveredDemandSources.size} demand source${discoveredDemandSources.size === 1 ? "" : "s"}.`
-          : "No demand sources found in the selected sites' live logs."
-      );
-    } catch (e) {
-      console.error(e);
-      setDemandSourceStatus("Failed to load demand sources.");
-      alert(String(e?.message || e));
-    } finally {
-      syncButtonStates();
-    }
+  document.getElementById("publisherSearchInput").addEventListener("change", () => {
+    handlePublisherSelectionChange().catch(error => {
+      console.error("Failed to handle publisher selection", error);
+      alert(String(error?.message || error));
+    });
   });
 
   document.getElementById("stopFetchButton").addEventListener("click", () => {
@@ -802,7 +838,14 @@
 
     const streamTypeSelect = document.getElementById("streamType");
     if (streamTypeSelect) {
-      streamTypeSelect.addEventListener("change", applyDefaultDataItemsForStreamType);
+      streamTypeSelect.addEventListener("change", async () => {
+        applyDefaultDataItemsForStreamType();
+        try {
+          await refreshCreativeDemandSources();
+        } catch (error) {
+          console.error("Failed to refresh demand sources", error);
+        }
+      });
     }
     applyDefaultDataItemsForStreamType();
 
@@ -816,34 +859,29 @@
   async function bootstrapFromQueryParams() {
     const queryPublisherId = getBootstrapQueryValue("publisher_id");
     const queryAccessToken = getBootstrapQueryValue("access_token");
+    bootstrapPublisherId = queryPublisherId || "";
 
     if (queryPublisherId) {
-      const publisherField = document.getElementById("publisherIdAuth");
-      if (publisherField && !publisherField.value.trim()) {
-        publisherField.value = queryPublisherId;
+      const publisherIdField = document.getElementById("publisherIdAuth");
+      if (publisherIdField && !publisherIdField.value.trim()) {
+        publisherIdField.value = queryPublisherId;
       }
     }
 
     if (!queryAccessToken) return;
-
-    const accessTokenField = document.getElementById("authAccessToken");
-    if (accessTokenField && !accessTokenField.value.trim()) {
-      accessTokenField.value = queryAccessToken;
-    }
-
-    setTokenStatus("Token: loading from extension...");
+    accessToken = queryAccessToken;
+    tokenExpiresAtMs = Date.now() + (12 * 60 * 60 * 1000);
     syncButtonStates();
 
-    if (!getPublisherId()) {
-      setTokenStatus("Token: loaded from extension (enter Publisher ID to load sites)");
-      return;
-    }
+    if (!getPublisherId()) return;
+
+    await resolvePublisherDisplay(getPublisherId());
 
     try {
-      await authenticateAndLoadSites();
+      await loadSitesForCurrentContext();
+      await refreshCreativeDemandSources();
     } catch (e) {
       console.error("Extension bootstrap auth failed", e);
-      setTokenStatus("Token: extension bootstrap failed");
       alert(String(e?.message || e));
     } finally {
       syncButtonStates();
@@ -938,7 +976,6 @@
     const payload = { type: 3028, site_uuid: siteUuid };
 
     try {
-      // ✅ auto-refresh if needed (proactive)
       await ensureValidToken();
 
       const makeUrl = () =>
@@ -955,10 +992,9 @@
       const response = await fetchWithAutoRefresh(makeReq);
 
       if (!response.ok) {
-        // if still 401 after retry, force re-auth
         if (response.status === 401) {
-          handleAuthFailure("401 even after refresh. Please authenticate again.");
-          alert("Unauthorized even after refresh. Please Authenticate again.");
+          handleAuthFailure("Token expired. Reopen RTB Stream from Publica.");
+          alert("Unauthorized. Reopen RTB Stream from Publica.");
           return;
         }
         throw new Error(`${response.status} ${response.statusText}`);
@@ -975,12 +1011,6 @@
     } catch (err) {
       console.error(`Error fetching site ${siteUuid}:`, err);
 
-      // if refresh failed due to invalid refresh token, force re-auth
-      if (String(err?.message || err).toLowerCase().includes("refresh failed") ||
-          String(err?.message || err).toLowerCase().includes("no refresh token")) {
-        handleAuthFailure("Refresh token invalid/missing. Please authenticate again.");
-      }
-
       if (!stopRequested && isFetching && loopId === fetchLoopId && activeSiteLoops.get(siteUuid) === loopId) {
         const tid = setTimeout(() => fetchLiveLogsForSite(siteUuid, loopId), 500);
         sitePollTimers.set(siteUuid, tid);
@@ -990,10 +1020,9 @@
 
   document.getElementById("fetchDataButton").addEventListener("click", async () => {
     try {
-      // ✅ auto-refresh (and only fallback to alert if refresh token missing)
       await ensureValidToken();
     } catch (e) {
-      alert("Please Authenticate first (token missing/expired and cannot refresh).");
+      alert("Missing or expired token. Reopen RTB Stream from Publica.");
       syncButtonStates();
       return;
     }
@@ -1345,9 +1374,33 @@
     });
   }
 
+  function getFirstAdValue(ad, keys) {
+    if (!ad) return undefined;
+    for (const key of keys) {
+      const value = ad[key];
+      if (value !== undefined && value !== null && value !== "") return value;
+    }
+    return undefined;
+  }
+
   function formatAdValue(ad, item, channelName) {
     if (item === "ChannelName") return channelName;
     if (item === "Adomain") return ad.Adomain || "N/A";
+    if (item === "isVault") {
+      const value = getFirstAdValue(ad, [
+        "isVault",
+        "IsVault",
+        "is_vault",
+        "vault",
+        "Vault",
+        "isBidSaver",
+        "IsBidSaver",
+        "is_bid_saver",
+        "bidSaver",
+        "BidSaver"
+      ]);
+      return value !== undefined ? value : "N/A";
+    }
     return (ad[item] !== undefined && ad[item] !== null && ad[item] !== "") ? ad[item] : "N/A";
   }
 
