@@ -72,6 +72,13 @@
       margin-bottom: 14px;
     }
 
+    .bulk-grid-secondary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
     .bulk-field label {
       display: block;
       margin-bottom: 6px;
@@ -263,6 +270,18 @@
         <div class="bulk-field">
           <label for="bulkIabCategory">IAB Category</label>
           <input type="text" id="bulkIabCategory" />
+        </div>
+      </div>
+      <div class="bulk-grid-secondary">
+        <div class="bulk-field"></div>
+        <div class="bulk-field"></div>
+        <div class="bulk-field">
+          <label for="bulkAdomainOverride">Adomain Override (original)</label>
+          <input type="text" id="bulkAdomainOverride" readonly />
+        </div>
+        <div class="bulk-field">
+          <label for="bulkIabCategoryOverride">IAB Category Override (original)</label>
+          <input type="text" id="bulkIabCategoryOverride" readonly />
         </div>
       </div>
       <div class="bulk-actions">

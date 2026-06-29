@@ -42,7 +42,8 @@ let reviewFilters = {
   bidder_tier_filter: "",
   category_filter: "",
   enriched_by_adomain_filter: "",
-  enriched_by_category_filter: ""
+  enriched_by_category_filter: "",
+  creative_url_filter: ""
 };
 
 function getReviewStatusScope() {
@@ -312,7 +313,8 @@ function syncReviewFiltersFromInputs() {
     bidder_tier_filter: $("bidderTierFilter")?.value || "",
     category_filter: $("categoryFilter")?.value || "",
     enriched_by_adomain_filter: $("enrichedByAdomainFilter")?.value || "",
-    enriched_by_category_filter: $("enrichedByCategoryFilter")?.value || ""
+    enriched_by_category_filter: $("enrichedByCategoryFilter")?.value || "",
+    creative_url_filter: $("creativeUrlFilter")?.value.trim() || ""
   };
 }
 
@@ -327,7 +329,8 @@ function applyReviewFiltersToInputs() {
     bidderTierFilter: reviewFilters.bidder_tier_filter,
     categoryFilter: reviewFilters.category_filter,
     enrichedByAdomainFilter: reviewFilters.enriched_by_adomain_filter,
-    enrichedByCategoryFilter: reviewFilters.enriched_by_category_filter
+    enrichedByCategoryFilter: reviewFilters.enriched_by_category_filter,
+    creativeUrlFilter: reviewFilters.creative_url_filter
   };
 
   Object.entries(fieldMap).forEach(([id, value]) => {
@@ -517,7 +520,7 @@ function getCreativeReviewPayload(page) {
     order: "desc",
     page,
     active_column_keys: ["ReviewAd", "Adomain", "IABCategory", "Impressions", "BidErrorsBrandSafety", "BidderID"],
-    creative_url_filter: "",
+    creative_url_filter: reviewFilters.creative_url_filter,
     brand_safety_rule_ids: "",
     user_filter: reviewFilters.user_filter,
     adomain_filter: reviewFilters.adomain_filter,
@@ -841,7 +844,8 @@ function renderResults() {
   if (!filteredCreativeRows.length) {
     body.innerHTML = '<div class="empty-state">No creative review rows match the current filters.</div>';
     setResultsCount("Showing 0 creative rows.");
-    setPageLabel(`Page ${currentPage + 1}`);
+    const totalPages = totalCreativeCount > 0 ? Math.ceil(totalCreativeCount / PAGE_SIZE) : Math.ceil(lastFetchedCount / PAGE_SIZE) || 1;
+  setPageLabel(`Page ${currentPage + 1} of ${totalPages}`);
     updatePaginationButtons();
     setReviewSummary("Creative review results are loaded, but nothing matches the current channel or bidder filter.");
     return;
@@ -882,6 +886,9 @@ function renderResults() {
           `adomain-override-${creativeKey}`
         )
       );
+      metadata.appendChild(
+        createMetadataRow("Adomain Override", `${row?.AdomainOverride || ""}`)
+      );
     }
     appendIfSelected(
       metadata,
@@ -897,6 +904,9 @@ function renderResults() {
           `${row?.IABCategoryOverride || row?.IABCategory || ""}`,
           `iab-category-override-${creativeKey}`
         )
+      );
+      metadata.appendChild(
+        createMetadataRow("IAB Category Override", `${row?.IABCategoryOverride || ""}`)
       );
     }
     appendIfSelected(
@@ -1063,7 +1073,8 @@ function renderResults() {
   });
 
   setResultsCount(`Showing ${filteredCreativeRows.length} of ${creativeRows.length} creative rows.`);
-  setPageLabel(`Page ${currentPage + 1}`);
+  const totalPages = totalCreativeCount > 0 ? Math.ceil(totalCreativeCount / PAGE_SIZE) : Math.ceil(lastFetchedCount / PAGE_SIZE) || 1;
+  setPageLabel(`Page ${currentPage + 1} of ${totalPages}`);
   updatePaginationButtons();
   setReviewSummary("Creative review results are ready. Each tile plays a short preview, resumes on hover, and opens the original creative in a new tab. Clicking Creative URL opens a filtered detail review in a new tab.");
 }
@@ -1112,7 +1123,8 @@ async function handlePublisherSelectionChange() {
     bidder_tier_filter: "",
     category_filter: "",
     enriched_by_adomain_filter: "",
-    enriched_by_category_filter: ""
+    enriched_by_category_filter: "",
+    creative_url_filter: ""
   };
   await refreshFilters();
 }
@@ -1151,6 +1163,7 @@ async function handleApplyReviewFilters() {
 
 async function handleClearReviewFilters() {
   [
+    "creativeUrlFilter",
     "reviewedByFilter",
     "adomainFilter",
     "channelFilter",

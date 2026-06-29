@@ -194,6 +194,8 @@ function updateBulkPanel(rows) {
   $("bulkCreativeUrl").value = `${creativeUrl || firstRow?.CreativeURL || firstRow?.OriginalCreativeURL || ""}`.trim();
   $("bulkAdomain").value = `${firstRow?.AdomainOverride || firstRow?.Adomain || ""}`.trim();
   $("bulkIabCategory").value = `${firstRow?.IABCategoryOverride || firstRow?.IABCategory || ""}`.trim();
+  $("bulkAdomainOverride").value = `${firstRow?.AdomainOverride || ""}`.trim();
+  $("bulkIabCategoryOverride").value = `${firstRow?.IABCategoryOverride || ""}`.trim();
 
   $("bulkUnreviewedButton").disabled = uniformStatus === 0;
   $("bulkReviewedButton").disabled = uniformStatus === 1;
