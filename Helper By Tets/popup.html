@@ -92,6 +92,39 @@
     .status.ready {
       color: var(--brand-dark);
     }
+
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: grab;
+    }
+
+    .list-item.dragging {
+      opacity: 0.4;
+    }
+
+    .list-item.drag-over {
+      border-top: 2px solid var(--brand);
+    }
+
+    .drag-handle {
+      flex: 0 0 auto;
+      color: var(--border);
+      font-size: 16px;
+      line-height: 1;
+      cursor: grab;
+      padding: 0 2px;
+      user-select: none;
+    }
+
+    .list-item:hover .drag-handle {
+      color: var(--brand);
+    }
+
+    .link-btn {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -99,26 +132,46 @@
     <h1 class="title">Helper by Tets</h1>
     <p class="subtitle">Choose a tool to open in a new tab using your captured Publica session.</p>
 
-    <div class="list">
-      <button type="button" class="link-btn" id="openRtbStream">
-        <div class="link-title">RTB Stream</div>
-        <div class="link-copy">Open the RTB Stream page in a new tab.</div>
-      </button>
+    <div class="list" id="toolList">
+      <div class="list-item" draggable="true" data-tool="openRtbStream">
+        <span class="drag-handle">⠿</span>
+        <button type="button" class="link-btn" id="openRtbStream">
+          <div class="link-title">RTB Stream</div>
+          <div class="link-copy">Open the RTB Stream page in a new tab.</div>
+        </button>
+      </div>
 
-      <button type="button" class="link-btn" id="openLiveLogs">
-        <div class="link-title">Live Logs</div>
-        <div class="link-copy">Open Live Logs page in new tab.</div>
-      </button>
+      <div class="list-item" draggable="true" data-tool="openLiveLogs">
+        <span class="drag-handle">⠿</span>
+        <button type="button" class="link-btn" id="openLiveLogs">
+          <div class="link-title">Live Logs</div>
+          <div class="link-copy">Open Live Logs page in new tab.</div>
+        </button>
+      </div>
 
-      <button type="button" class="link-btn" id="openBidderChannelMappings">
-        <div class="link-title">Channel/Bidder Mappings</div>
-        <div class="link-copy">Open a new Mapping page in a new tab.</div>
-      </button>
+      <div class="list-item" draggable="true" data-tool="openBidderChannelMappings">
+        <span class="drag-handle">⠿</span>
+        <button type="button" class="link-btn" id="openBidderChannelMappings">
+          <div class="link-title">Channel/Bidder Mappings</div>
+          <div class="link-copy">Open a new Mapping page in a new tab.</div>
+        </button>
+      </div>
 
-      <button type="button" class="link-btn" id="openCreativeReview">
-        <div class="link-title">Creative Review</div>
-        <div class="link-copy">Open Creative Review page in a new tab.</div>
-      </button>
+      <div class="list-item" draggable="true" data-tool="openCreativeReview">
+        <span class="drag-handle">⠿</span>
+        <button type="button" class="link-btn" id="openCreativeReview">
+          <div class="link-title">Creative Review</div>
+          <div class="link-copy">Open Creative Review page in a new tab.</div>
+        </button>
+      </div>
+
+      <div class="list-item" draggable="true" data-tool="openBidderInfo">
+        <span class="drag-handle">⠿</span>
+        <button type="button" class="link-btn" id="openBidderInfo">
+          <div class="link-title">Bidder Info</div>
+          <div class="link-copy">Open Bidder Info page in a new tab.</div>
+        </button>
+      </div>
     </div>
 
     <div class="status" id="status">Open Publica first so the extension can capture your auth context.</div>

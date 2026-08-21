@@ -11,7 +11,8 @@ let filteredCreativeRows = [];
 let siteIdByUuid = new Map();
 let siteNameById = new Map();
 const PREVIEW_SECONDS = 3;
-const PAGE_SIZE = 25;
+const API_PAGE_SIZE = 25;
+let PAGE_SIZE = 25;
 const EXPORT_FIELDS = [
   "BidderID",
   "BidderName",
@@ -31,9 +32,14 @@ const creativeExportCache = new Map();
 let currentPage = 0;
 let lastFetchedCount = 0;
 let totalCreativeCount = 0;
+let displayPageApiStarts = [0];
+let seenCreativeUrls = new Set();
+let aggregatedRows = new Map();
+let displayPageCache = new Map();
+let hasMoreData = true;
+let fetchGeneration = 0;
 const CREATIVE_REVIEW_CONFIG_HIDDEN_KEY = "creativeReviewConfigHidden";
 let reviewFilters = {
-  user_filter: "",
   adomain_filter: "",
   bidder_filter: "",
   site_filter: "",
@@ -45,6 +51,7 @@ let reviewFilters = {
   enriched_by_category_filter: "",
   creative_url_filter: ""
 };
+
 
 function getReviewStatusScope() {
   return $("reviewStatusScope")?.value || "0";
@@ -137,14 +144,14 @@ function updatePaginationButtons() {
   const nextButton = $("nextPageButton");
   if (previousButton) previousButton.disabled = currentPage <= 0;
   if (nextButton) {
-    nextButton.disabled = totalCreativeCount > 0
-      ? (currentPage + 1) * PAGE_SIZE >= totalCreativeCount
-      : lastFetchedCount < PAGE_SIZE;
+    const knownNextPage = displayPageApiStarts.length > currentPage + 1;
+    nextButton.disabled = !knownNextPage && !hasMoreData;
   }
 }
 
 function stopAndReleaseVideo(video) {
   if (!video) return;
+  try { videoObserver.unobserve(video); } catch {}
   try { video.pause(); } catch {}
   try {
     video.removeAttribute("src");
@@ -304,7 +311,6 @@ function toOptionList(values) {
 
 function syncReviewFiltersFromInputs() {
   reviewFilters = {
-    user_filter: $("reviewedByFilter")?.value || "",
     adomain_filter: $("adomainFilter")?.value || "",
     bidder_filter: $("bidderFilter")?.value || "",
     site_filter: $("channelFilter")?.value || "",
@@ -320,7 +326,6 @@ function syncReviewFiltersFromInputs() {
 
 function applyReviewFiltersToInputs() {
   const fieldMap = {
-    reviewedByFilter: reviewFilters.user_filter,
     adomainFilter: reviewFilters.adomain_filter,
     bidderFilter: reviewFilters.bidder_filter,
     channelFilter: reviewFilters.site_filter,
@@ -340,19 +345,12 @@ function applyReviewFiltersToInputs() {
 }
 
 function populateReviewFilterOptions() {
-  const activeBidderIds = new Set(creativeRows.map(row => String(row?.BidderID || "")).filter(Boolean));
-  const relevantBidderInfos = bidderInfos.filter(item => activeBidderIds.size === 0 || activeBidderIds.has(String(item?.ID || "")));
-
-  populateSelect("reviewedByFilter", toOptionList(creativeRows.map(row => row?.User)), "All Reviewed By");
-  populateSelect("adomainFilter", toOptionList(creativeRows.map(row => row?.Adomain)), "All Adomains");
-  populateSelect("categoryFilter", toOptionList(creativeRows.map(row => row?.IABCategory)), "All IAB Categories");
-  populateSelect("demandSourceFilter", toOptionList(relevantBidderInfos.map(item => item?.Bidder)), "All Demand Sources");
+  populateSelect("demandSourceFilter", toOptionList(bidderInfos.map(item => item?.Bidder)), "All Demand Sources");
   populateSelect(
     "bidderGroupFilter",
-    toOptionList(relevantBidderInfos.flatMap(item => Array.isArray(item?.BidderLabels) ? item.BidderLabels.map(label => label?.Name) : [])),
+    toOptionList(bidderInfos.flatMap(item => Array.isArray(item?.BidderLabels) ? item.BidderLabels.map(label => label?.Name) : [])),
     "All Bidder Groups"
   );
-  populateSelect("bidderTierFilter", toOptionList(relevantBidderInfos.map(item => item?.Priority)), "All Bidder Tiers");
 }
 
 function escapeHtml(value) {
@@ -519,10 +517,10 @@ function getCreativeReviewPayload(page) {
     order_by: "",
     order: "desc",
     page,
-    active_column_keys: ["ReviewAd", "Adomain", "IABCategory", "Impressions", "BidErrorsBrandSafety", "BidderID"],
+    active_column_keys: ["ReviewAd", "Adomain", "IABCategory", "Impressions", "BidErrorsBrandSafety", "CPM", "BlockedRuleIDs", "BidderID"],
     creative_url_filter: reviewFilters.creative_url_filter,
     brand_safety_rule_ids: "",
-    user_filter: reviewFilters.user_filter,
+    user_filter: "",
     adomain_filter: reviewFilters.adomain_filter,
     bidder_filter: reviewFilters.bidder_filter,
     site_filter: reviewFilters.site_filter,
@@ -549,9 +547,79 @@ function getTotalCreativeCount(rows) {
 }
 
 async function loadCreativeRows() {
-  creativeRows = await fetchCreativeReviewPage(currentPage);
-  lastFetchedCount = creativeRows.length;
-  totalCreativeCount = getTotalCreativeCount(creativeRows);
+  if (displayPageCache.has(currentPage)) {
+    creativeRows = displayPageCache.get(currentPage);
+    lastFetchedCount = creativeRows.length;
+    totalCreativeCount = getTotalCreativeCount(creativeRows);
+    applyResultFilters();
+    clearResults();
+    appendNewResults();
+    return;
+  }
+
+  const gen = ++fetchGeneration;
+  creativeRows = [];
+  clearResults();
+
+  const unique = [];
+  let apiPage = displayPageApiStarts[currentPage] ?? 0;
+
+  while (unique.length < PAGE_SIZE) {
+    const rows = await fetchCreativeReviewPage(apiPage);
+    if (gen !== fetchGeneration) return; // superseded by newer fetch
+
+    for (const row of rows) {
+      const url = `${row?.CreativeURL || ""}`.trim();
+      if (!url) continue;
+      if (seenCreativeUrls.has(url)) {
+        const agg = aggregatedRows.get(url);
+        if (agg) {
+          agg.Impressions = (Number(agg.Impressions) || 0) + (Number(row.Impressions) || 0);
+          agg.BidErrorBlockedResponses = (Number(agg.BidErrorBlockedResponses) || 0) + (Number(row.BidErrorBlockedResponses) || 0);
+          agg.BidErrors = (Number(agg.BidErrors) || 0) + (Number(row.BidErrors) || 0);
+          agg.BidErrorsBrandSafety = (Number(agg.BidErrorsBrandSafety) || 0) + (Number(row.BidErrorsBrandSafety) || 0);
+          updateAggregatedCardFields(agg);
+        }
+      } else {
+        seenCreativeUrls.add(url);
+        const agg = {
+          ...row,
+          Impressions: Number(row.Impressions) || 0,
+          BidErrorBlockedResponses: Number(row.BidErrorBlockedResponses) || 0,
+          BidErrors: Number(row.BidErrors) || 0,
+          BidErrorsBrandSafety: Number(row.BidErrorsBrandSafety) || 0
+        };
+        aggregatedRows.set(url, agg);
+        unique.push(agg);
+        if (unique.length >= PAGE_SIZE) break;
+      }
+    }
+
+    creativeRows = [...unique];
+    applyResultFilters();
+    appendNewResults();
+
+    if (rows.length < API_PAGE_SIZE) {
+      hasMoreData = false;
+      break;
+    }
+
+    apiPage++;
+    if (unique.length >= PAGE_SIZE) {
+      hasMoreData = true;
+      break;
+    }
+  }
+
+  if (gen !== fetchGeneration) return;
+
+  if (displayPageApiStarts.length <= currentPage + 1) {
+    displayPageApiStarts.push(apiPage);
+  }
+
+  lastFetchedCount = unique.length;
+  totalCreativeCount = getTotalCreativeCount(unique);
+  displayPageCache.set(currentPage, [...unique]);
 }
 
 function getCreativeExportCacheKey() {
@@ -594,6 +662,39 @@ function downloadCsv(csv, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+function aggregateRowsForExport(rows) {
+  const seen = new Set();
+  const aggMap = new Map();
+  const ordered = [];
+
+  for (const row of rows) {
+    const url = `${row?.CreativeURL || ""}`.trim();
+    if (!url) continue;
+    if (seen.has(url)) {
+      const agg = aggMap.get(url);
+      if (agg) {
+        agg.Impressions = (Number(agg.Impressions) || 0) + (Number(row.Impressions) || 0);
+        agg.BidErrorBlockedResponses = (Number(agg.BidErrorBlockedResponses) || 0) + (Number(row.BidErrorBlockedResponses) || 0);
+        agg.BidErrors = (Number(agg.BidErrors) || 0) + (Number(row.BidErrors) || 0);
+        agg.BidErrorsBrandSafety = (Number(agg.BidErrorsBrandSafety) || 0) + (Number(row.BidErrorsBrandSafety) || 0);
+      }
+    } else {
+      seen.add(url);
+      const agg = {
+        ...row,
+        Impressions: Number(row.Impressions) || 0,
+        BidErrorBlockedResponses: Number(row.BidErrorBlockedResponses) || 0,
+        BidErrors: Number(row.BidErrors) || 0,
+        BidErrorsBrandSafety: Number(row.BidErrorsBrandSafety) || 0
+      };
+      aggMap.set(url, agg);
+      ordered.push(agg);
+    }
+  }
+
+  return ordered;
+}
+
 async function loadAllCreativeRowsForExport() {
   const cacheKey = getCreativeExportCacheKey();
   const cachedRows = creativeExportCache.get(cacheKey);
@@ -603,7 +704,7 @@ async function loadAllCreativeRowsForExport() {
 
   const firstPageRows = await fetchCreativeReviewPage(0);
   const totalCount = getTotalCreativeCount(firstPageRows);
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const totalPages = Math.ceil(totalCount / API_PAGE_SIZE);
   const rows = [...firstPageRows];
 
   for (let page = 1; page < totalPages; page += 1) {
@@ -612,7 +713,8 @@ async function loadAllCreativeRowsForExport() {
     rows.push(...pageRows);
   }
 
-  const completeRows = filterCreativeRows(rows.slice(0, totalCount));
+  const filtered = filterCreativeRows(rows.slice(0, totalCount));
+  const completeRows = aggregateRowsForExport(filtered);
   creativeExportCache.set(cacheKey, completeRows);
   return { rows: completeRows, fromCache: false };
 }
@@ -685,6 +787,7 @@ function filterCreativeRows(rows) {
       !enrichedByAdomainFilter || String(isAdomainEnriched) === enrichedByAdomainFilter;
     const categoryEnrichmentMatches =
       !enrichedByCategoryFilter || String(isCategoryEnriched) === enrichedByCategoryFilter;
+
     return bidderMatches && channelMatches && adomainEnrichmentMatches && categoryEnrichmentMatches;
   });
 }
@@ -736,6 +839,21 @@ function createCreativeUrlFilterValue(row) {
   return `creative-review-detail.html?${query.toString()}`;
 }
 
+const videoObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const video = entry.target;
+    if (entry.isIntersecting) {
+      if (video._previewComplete) return;
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {});
+      }
+    } else {
+      try { video.pause(); } catch {}
+    }
+  });
+}, { threshold: 0.5 });
+
 function createVideoPreviewElement(url) {
   if (!url) {
     const placeholder = document.createElement("div");
@@ -754,41 +872,39 @@ function createVideoPreviewElement(url) {
   video.muted = true;
   video.playsInline = true;
   video.loop = false;
-  video.autoplay = true;
+  video.autoplay = false;
   video.src = url;
-
-  let previewComplete = false;
-  let hoverResumeActive = false;
+  video._previewComplete = false;
 
   const pauseVideo = () => {
     try { video.pause(); } catch {}
   };
 
-  const onTimeUpdate = () => {
-    if (!previewComplete && video.currentTime >= PREVIEW_SECONDS) {
-      previewComplete = true;
+  video.addEventListener("timeupdate", () => {
+    if (!video._previewComplete && !video._hoverActive && video.currentTime >= PREVIEW_SECONDS) {
+      video._previewComplete = true;
       pauseVideo();
     }
-  };
+  });
 
-  const onEnded = () => {
-    previewComplete = true;
-  };
+  video.addEventListener("ended", () => {
+    video._previewComplete = true;
+  });
 
-  video.addEventListener("timeupdate", onTimeUpdate);
-  video.addEventListener("ended", onEnded);
   video.addEventListener("mouseenter", () => {
-    hoverResumeActive = true;
+    video._hoverActive = true;
     const playPromise = video.play();
     if (playPromise && typeof playPromise.catch === "function") {
       playPromise.catch(() => {});
     }
   });
+
   video.addEventListener("mouseleave", () => {
-    if (!hoverResumeActive) return;
-    hoverResumeActive = false;
+    video._hoverActive = false;
     pauseVideo();
   });
+
+  videoObserver.observe(video);
 
   link.appendChild(video);
   return link;
@@ -797,6 +913,26 @@ function createVideoPreviewElement(url) {
 function appendIfSelected(container, selectedFields, fieldKey, label, value, isLink = false, href = "") {
   if (!selectedFields.includes(fieldKey)) return;
   container.appendChild(createMetadataRow(label, value, isLink, href));
+}
+
+function appendAggregatedField(container, selectedFields, fieldKey, label, value, creativeKey) {
+  if (!selectedFields.includes(fieldKey)) return;
+  const row = createMetadataRow(label, value);
+  const valueEl = row.querySelector(".meta-value");
+  if (valueEl) valueEl.dataset.aggField = `${creativeKey}:${fieldKey}`;
+  container.appendChild(row);
+}
+
+function updateAggregatedCardFields(agg) {
+  const key = makeDomSafeKey(`${agg.CreativeURL || agg.OriginalCreativeURL || ""}`);
+  const fields = {
+    Impressions: agg.Impressions,
+    BidErrorBlockedResponses: agg.BidErrorBlockedResponses
+  };
+  Object.entries(fields).forEach(([fieldKey, val]) => {
+    const el = document.querySelector(`[data-agg-field="${key}:${fieldKey}"]`);
+    if (el) el.textContent = `${val}`;
+  });
 }
 
 async function updateCreativeReviewStatus(row, reviewStatus) {
@@ -835,26 +971,23 @@ async function updateCreativeReviewRow(row, { reviewStatus, adomainOverride, iab
   setAuthStatus(`Updated creative review to ${formatReviewStatus(reviewStatus)} for ${targetCreativeUrl}.`);
 }
 
-function renderResults() {
+let renderedRowCount = 0;
+
+function clearResults() {
   const body = $("resultsBody");
   if (!body) return;
-
   body.querySelectorAll("video").forEach(video => stopAndReleaseVideo(video));
-
-  if (!filteredCreativeRows.length) {
-    body.innerHTML = '<div class="empty-state">No creative review rows match the current filters.</div>';
-    setResultsCount("Showing 0 creative rows.");
-    const totalPages = totalCreativeCount > 0 ? Math.ceil(totalCreativeCount / PAGE_SIZE) : Math.ceil(lastFetchedCount / PAGE_SIZE) || 1;
-  setPageLabel(`Page ${currentPage + 1} of ${totalPages}`);
-    updatePaginationButtons();
-    setReviewSummary("Creative review results are loaded, but nothing matches the current channel or bidder filter.");
-    return;
-  }
-
-  const selectedFields = getSelectedMetadataFields();
   body.innerHTML = "";
+  renderedRowCount = 0;
+}
 
-  filteredCreativeRows.forEach(row => {
+function updateResultsStatus() {
+  setResultsCount(`Showing ${filteredCreativeRows.length} of ${creativeRows.length} creative rows.`);
+  setPageLabel(`Page ${currentPage + 1}`);
+  updatePaginationButtons();
+}
+
+function createCard(row, selectedFields) {
     const card = document.createElement("div");
     card.className = "review-card";
 
@@ -864,9 +997,7 @@ function renderResults() {
 
     const metadata = document.createElement("div");
     metadata.className = "metadata";
-    const creativeKey = makeDomSafeKey(`${row?.CreativeURL || row?.OriginalCreativeURL || row?.BidderID || Math.random()}`);
-    appendIfSelected(metadata, selectedFields, "BidderID", "Bidder ID", `${row?.BidderID ?? ""}`);
-    appendIfSelected(metadata, selectedFields, "BidderName", "Bidder Name", `${row?.BidderName ?? ""}`);
+    const creativeKey = makeDomSafeKey(`${row?.CreativeURL || row?.OriginalCreativeURL || Math.random()}`);
     appendIfSelected(metadata, selectedFields, "ReviewStatus", "Review Status", formatReviewStatus(row?.ReviewStatus));
     const creativeUrlFilterValue = createCreativeUrlFilterValue(row);
     appendIfSelected(
@@ -886,15 +1017,12 @@ function renderResults() {
           `adomain-override-${creativeKey}`
         )
       );
-      metadata.appendChild(
-        createMetadataRow("Adomain Override", `${row?.AdomainOverride || ""}`)
-      );
     }
     appendIfSelected(
       metadata,
       selectedFields,
       "EnrichedByAdomain",
-      "Enriched by Adomain",
+      "Enriched Adomain",
       `${Boolean(`${row?.AdomainEnrichedBy || ""}`.trim())}`
     );
     if (selectedFields.includes("IABCategory")) {
@@ -905,20 +1033,16 @@ function renderResults() {
           `iab-category-override-${creativeKey}`
         )
       );
-      metadata.appendChild(
-        createMetadataRow("IAB Category Override", `${row?.IABCategoryOverride || ""}`)
-      );
     }
     appendIfSelected(
       metadata,
       selectedFields,
       "EnrichedByCategory",
-      "Enriched by Category",
+      "Enriched Category",
       `${Boolean(`${row?.CategoryEnrichedBy || ""}`.trim())}`
     );
-    appendIfSelected(metadata, selectedFields, "TotalCount", "Total Count", `${row?.TotalCount ?? ""}`);
-    appendIfSelected(metadata, selectedFields, "Impressions", "Impressions", `${row?.Impressions ?? ""}`);
-    appendIfSelected(metadata, selectedFields, "BidErrorBlockedResponses", "Bid Error Blocked Responses", `${row?.BidErrorBlockedResponses ?? ""}`);
+    appendAggregatedField(metadata, selectedFields, "Impressions", "Impressions", `${row?.Impressions ?? ""}`, creativeKey);
+    appendAggregatedField(metadata, selectedFields, "BidErrorBlockedResponses", "Bid Error Blocked Responses", `${row?.BidErrorBlockedResponses ?? ""}`, creativeKey);
 
     if (!metadata.children.length) {
       metadata.appendChild(createMetadataRow("Metadata", "No metadata fields selected."));
@@ -1069,14 +1193,34 @@ function renderResults() {
 
     card.appendChild(tile);
     card.appendChild(metadata);
-    body.appendChild(card);
-  });
+    return card;
+}
 
-  setResultsCount(`Showing ${filteredCreativeRows.length} of ${creativeRows.length} creative rows.`);
-  const totalPages = totalCreativeCount > 0 ? Math.ceil(totalCreativeCount / PAGE_SIZE) : Math.ceil(lastFetchedCount / PAGE_SIZE) || 1;
-  setPageLabel(`Page ${currentPage + 1} of ${totalPages}`);
-  updatePaginationButtons();
+function appendNewResults() {
+  const body = $("resultsBody");
+  if (!body) return;
+
+  const newRows = filteredCreativeRows.slice(renderedRowCount);
+
+  if (renderedRowCount === 0 && newRows.length === 0) {
+    body.innerHTML = '<div class="empty-state">No creative review rows match the current filters.</div>';
+    updateResultsStatus();
+    return;
+  }
+
+  const emptyState = body.querySelector(".empty-state");
+  if (emptyState) emptyState.remove();
+
+  const selectedFields = getSelectedMetadataFields();
+  newRows.forEach(row => body.appendChild(createCard(row, selectedFields)));
+  renderedRowCount = filteredCreativeRows.length;
+  updateResultsStatus();
   setReviewSummary("Creative review results are ready. Each tile plays a short preview, resumes on hover, and opens the original creative in a new tab. Clicking Creative URL opens a filtered detail review in a new tab.");
+}
+
+function renderResults() {
+  clearResults();
+  appendNewResults();
 }
 
 function handleResultFilterChange() {
@@ -1095,16 +1239,27 @@ async function refreshFilters() {
     return;
   }
 
-  setAuthStatus("Loading channels, bidders, and creative review data...");
+  setAuthStatus("Loading...");
 
-  await Promise.all([loadChannels(), loadBidders(), loadCreativeRows()]);
+  const [, ] = await Promise.all([loadChannels(), loadBidders()]);
   populateSelect("channelFilter", channels, "All Channels");
   populateSelect("bidderFilter", bidders, "All Bidders");
   populateReviewFilterOptions();
   applyReviewFiltersToInputs();
-  applyResultFilters();
-  renderResults();
+  setAuthStatus(`Loaded ${channels.length} channels, ${bidders.length} bidders. Fetching creatives...`);
+
+  await loadCreativeRows();
   setAuthStatus(`Loaded ${channels.length} channels, ${bidders.length} bidders, and ${creativeRows.length} creative rows.`);
+}
+
+function resetPaginationState() {
+  fetchGeneration++;
+  currentPage = 0;
+  displayPageApiStarts = [0];
+  seenCreativeUrls = new Set();
+  aggregatedRows = new Map();
+  displayPageCache = new Map();
+  hasMoreData = true;
 }
 
 async function handlePublisherSelectionChange() {
@@ -1112,9 +1267,8 @@ async function handlePublisherSelectionChange() {
     return;
   }
 
-  currentPage = 0;
+  resetPaginationState();
   reviewFilters = {
-    user_filter: "",
     adomain_filter: "",
     bidder_filter: "",
     site_filter: "",
@@ -1130,11 +1284,12 @@ async function handlePublisherSelectionChange() {
 }
 
 async function handleReviewStatusScopeChange() {
-  currentPage = 0;
+  resetPaginationState();
   await refreshFilters();
 }
 
 async function handleNextPage() {
+  fetchGeneration++;
   currentPage += 1;
   try {
     await refreshFilters();
@@ -1146,6 +1301,7 @@ async function handleNextPage() {
 
 async function handlePreviousPage() {
   if (currentPage <= 0) return;
+  fetchGeneration++;
   currentPage -= 1;
   try {
     await refreshFilters();
@@ -1157,14 +1313,13 @@ async function handlePreviousPage() {
 
 async function handleApplyReviewFilters() {
   syncReviewFiltersFromInputs();
-  currentPage = 0;
+  resetPaginationState();
   await refreshFilters();
 }
 
 async function handleClearReviewFilters() {
   [
     "creativeUrlFilter",
-    "reviewedByFilter",
     "adomainFilter",
     "channelFilter",
     "bidderFilter",
@@ -1180,7 +1335,7 @@ async function handleClearReviewFilters() {
       if (field) field.value = "";
     });
   syncReviewFiltersFromInputs();
-  currentPage = 0;
+  resetPaginationState();
   await refreshFilters();
 }
 
@@ -1197,6 +1352,7 @@ async function init() {
   $("publisherIdInput").value = publisherId;
   setConfigHidden(isConfigHidden());
   $("configToggleButton").addEventListener("click", toggleConfigVisibility);
+
   $("publisherSearchInput").addEventListener("input", () => {
     handlePublisherSearchInput().catch(error => {
       console.error("Failed to handle publisher search input", error);
@@ -1244,6 +1400,15 @@ async function init() {
   $("exportCsvButton").addEventListener("click", () => {
     handleExportCsv().catch(error => {
       console.error("Failed to export creative review CSV", error);
+      setAuthStatus(String(error?.message || error), true);
+    });
+  });
+
+  $("pageSizeSelect").addEventListener("change", () => {
+    PAGE_SIZE = Number($("pageSizeSelect").value) || 25;
+    resetPaginationState();
+    refreshFilters().catch(error => {
+      console.error("Failed to reload after page size change", error);
       setAuthStatus(String(error?.message || error), true);
     });
   });

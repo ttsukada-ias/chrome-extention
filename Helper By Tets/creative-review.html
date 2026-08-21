@@ -414,6 +414,7 @@
       font-size: 14px;
     }
 
+
     @media (max-width: 900px) {
       .grid {
         grid-template-columns: 1fr;
@@ -485,16 +486,8 @@
           </select>
         </div>
         <div class="field">
-          <label for="reviewedByFilter">Reviewed By</label>
-          <select id="reviewedByFilter">
-            <option value="">All Reviewed By</option>
-          </select>
-        </div>
-        <div class="field">
           <label for="adomainFilter">Adomain</label>
-          <select id="adomainFilter">
-            <option value="">All Adomains</option>
-          </select>
+          <input type="text" id="adomainFilter" placeholder="e.g. nokia.com" autocomplete="off" />
         </div>
         <div class="field">
           <label for="demandSourceFilter">Demand Source</label>
@@ -512,13 +505,21 @@
           <label for="bidderTierFilter">Bidder Tier</label>
           <select id="bidderTierFilter">
             <option value="">All Bidder Tiers</option>
+            <option value="1">Tier 1</option>
+            <option value="2">Tier 2</option>
+            <option value="3">Tier 3</option>
+            <option value="4">Tier 4</option>
+            <option value="5">Tier 5</option>
+            <option value="6">Tier 6</option>
+            <option value="7">Tier 7</option>
+            <option value="8">Tier 8</option>
+            <option value="9">Tier 9</option>
+            <option value="10">Tier 10</option>
           </select>
         </div>
         <div class="field">
           <label for="categoryFilter">IAB Category</label>
-          <select id="categoryFilter">
-            <option value="">All IAB Categories</option>
-          </select>
+          <input type="text" id="categoryFilter" placeholder="e.g. IAB19" autocomplete="off" />
         </div>
         <div class="field">
           <label for="enrichedByAdomainFilter">Enriched by Adomain</label>
@@ -546,15 +547,12 @@
     <div class="meta-controls config-section" id="configMetaSection">
       <h2>Metadata Fields</h2>
       <div class="checkbox-grid" id="metaFieldSelection">
-        <label><input type="checkbox" value="BidderID" checked /> Bidder ID</label>
-        <label><input type="checkbox" value="BidderName" checked /> Bidder Name</label>
         <label><input type="checkbox" value="ReviewStatus" checked /> Review Status</label>
         <label><input type="checkbox" value="CreativeURL" checked /> Creative URL</label>
         <label><input type="checkbox" value="Adomain" checked /> Adomain</label>
-        <label><input type="checkbox" value="EnrichedByAdomain" checked /> Enriched by Adomain</label>
+        <label><input type="checkbox" value="EnrichedByAdomain" checked /> Enriched Adomain</label>
         <label><input type="checkbox" value="IABCategory" checked /> IAB Category</label>
-        <label><input type="checkbox" value="EnrichedByCategory" checked /> Enriched by Category</label>
-        <label><input type="checkbox" value="TotalCount" checked /> Total Count</label>
+        <label><input type="checkbox" value="EnrichedByCategory" checked /> Enriched Category</label>
         <label><input type="checkbox" value="Impressions" checked /> Impressions</label>
         <label><input type="checkbox" value="BidErrorBlockedResponses" checked /> Bid Error Blocked Responses</label>
       </div>
@@ -567,6 +565,11 @@
         <div class="results-count" id="resultsCount">No creatives loaded yet.</div>
         <div class="results-actions">
           <button type="button" class="button" id="exportCsvButton">Export CSV</button>
+          <select id="pageSizeSelect" class="button" style="cursor:pointer;">
+            <option value="25">25 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+          </select>
           <div class="page-label" id="pageLabel">Page 1</div>
           <button type="button" class="button" id="previousPageButton">Previous Page</button>
           <button type="button" class="button" id="nextPageButton">Next Page</button>

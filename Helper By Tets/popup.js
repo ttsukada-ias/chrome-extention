@@ -1,5 +1,13 @@
 const LATEST_PAYLOAD_STORAGE_KEY = "latestPublicaAuthPayload";
 const TAB_PAYLOAD_STORAGE_KEY_PREFIX = "publicaAuthPayload:";
+const TOOL_ORDER_KEY = "toolOrder";
+const TOOL_PAGES = {
+  openRtbStream: "rtbstream.html",
+  openLiveLogs: "live-logs.html",
+  openBidderChannelMappings: "bidder-channel-mappings.html",
+  openCreativeReview: "creative-review.html",
+  openBidderInfo: "bidder-info.html"
+};
 
 function getStorageArea() {
   return chrome.storage.session || chrome.storage.local;
@@ -42,21 +50,89 @@ async function openTool(page, payload) {
   window.close();
 }
 
+async function loadToolOrder() {
+  const items = await chrome.storage.local.get(TOOL_ORDER_KEY);
+  return items[TOOL_ORDER_KEY] || null;
+}
+
+async function saveToolOrder(order) {
+  await chrome.storage.local.set({ [TOOL_ORDER_KEY]: order });
+}
+
+function applyOrder(order) {
+  const list = document.getElementById("toolList");
+  if (!list || !order) return;
+  order.forEach(toolId => {
+    const item = list.querySelector(`[data-tool="${toolId}"]`);
+    if (item) list.appendChild(item);
+  });
+}
+
+function wireDragAndDrop(list) {
+  let draggedItem = null;
+
+  list.addEventListener("dragstart", e => {
+    draggedItem = e.target.closest(".list-item");
+    if (!draggedItem) return;
+    setTimeout(() => draggedItem.classList.add("dragging"), 0);
+    e.dataTransfer.effectAllowed = "move";
+  });
+
+  list.addEventListener("dragend", () => {
+    if (!draggedItem) return;
+    draggedItem.classList.remove("dragging");
+    list.querySelectorAll(".list-item").forEach(el => el.classList.remove("drag-over"));
+    const order = [...list.querySelectorAll(".list-item")].map(el => el.dataset.tool);
+    saveToolOrder(order).catch(() => {});
+    draggedItem = null;
+  });
+
+  list.addEventListener("dragover", e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const target = e.target.closest(".list-item");
+    if (!target || target === draggedItem) return;
+    list.querySelectorAll(".list-item").forEach(el => el.classList.remove("drag-over"));
+    target.classList.add("drag-over");
+  });
+
+  list.addEventListener("dragleave", e => {
+    const target = e.target.closest(".list-item");
+    if (target) target.classList.remove("drag-over");
+  });
+
+  list.addEventListener("drop", e => {
+    e.preventDefault();
+    const target = e.target.closest(".list-item");
+    if (!target || !draggedItem || target === draggedItem) return;
+    target.classList.remove("drag-over");
+    const items = [...list.querySelectorAll(".list-item")];
+    const draggedIndex = items.indexOf(draggedItem);
+    const targetIndex = items.indexOf(target);
+    if (draggedIndex < targetIndex) {
+      target.after(draggedItem);
+    } else {
+      target.before(draggedItem);
+    }
+  });
+}
+
 async function init() {
   const status = document.getElementById("status");
-  const openRtbStream = document.getElementById("openRtbStream");
-  const openLiveLogs = document.getElementById("openLiveLogs");
-  const openBidderChannelMappings = document.getElementById("openBidderChannelMappings");
-  const openCreativeReview = document.getElementById("openCreativeReview");
+  const list = document.getElementById("toolList");
 
-  const activeTab = await getActiveTab();
+  const [activeTab, savedOrder] = await Promise.all([getActiveTab(), loadToolOrder()]);
   const payload = await getStoredPayload(activeTab?.id);
   const hasAuth = !!payload?.accessToken;
 
-  openRtbStream.disabled = !hasAuth;
-  openLiveLogs.disabled = !hasAuth;
-  openBidderChannelMappings.disabled = !hasAuth;
-  openCreativeReview.disabled = !hasAuth;
+  if (savedOrder) applyOrder(savedOrder);
+
+  Object.entries(TOOL_PAGES).forEach(([id, page]) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled = !hasAuth;
+    btn.addEventListener("click", () => openTool(page, payload));
+  });
 
   if (hasAuth) {
     status.textContent = payload.publisherId
@@ -67,10 +143,7 @@ async function init() {
     status.textContent = "Open Publica and let the extension capture auth before launching a tool.";
   }
 
-  openRtbStream.addEventListener("click", () => openTool("rtbstream.html", payload));
-  openLiveLogs.addEventListener("click", () => openTool("live-logs.html", payload));
-  openBidderChannelMappings.addEventListener("click", () => openTool("bidder-channel-mappings.html", payload));
-  openCreativeReview.addEventListener("click", () => openTool("creative-review.html", payload));
+  wireDragAndDrop(list);
 }
 
 init().catch(error => {
