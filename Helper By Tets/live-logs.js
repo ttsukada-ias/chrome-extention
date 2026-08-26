@@ -879,8 +879,9 @@ function getFilteredResults() {
 }
 
 function toCsvCell(value) {
-  const text = typeof value === "string" ? value : normalizeJsonToSingleLine(value);
-  return String(text ?? "").replace(/\t/g, " ").replace(/\r?\n/g, " ");
+  const raw = typeof value === "string" ? value : normalizeJsonToSingleLine(value);
+  const text = String(raw ?? "").replace(/\r?\n/g, " ");
+  return `"${text.replace(/"/g, "\"\"")}"`;
 }
 
 function buildCsvRows(entries) {
@@ -891,24 +892,24 @@ function buildCsvRows(entries) {
   const tableEntry = entries.find(item => Array.isArray(item?.columns) && item?.rowData);
   if (tableEntry) {
     const columns = tableEntry.columns;
-    const rows = [columns.map(toCsvCell).join("\t")];
+    const rows = [columns.map(toCsvCell).join(",")];
 
     entries.forEach(entry => {
-      rows.push(columns.map(column => toCsvCell(entry?.rowData?.[column])).join("\t"));
+      rows.push(columns.map(column => toCsvCell(entry?.rowData?.[column])).join(","));
     });
 
     return rows;
   }
 
   const columns = ["title", "kind", "value"];
-  const rows = [columns.map(toCsvCell).join("\t")];
+  const rows = [columns.map(toCsvCell).join(",")];
 
   entries.forEach(entry => {
     rows.push([
       toCsvCell(entry?.title || ""),
       toCsvCell(entry?.kind || ""),
       toCsvCell(entry?.value || "")
-    ].join("\t"));
+    ].join(","));
   });
 
   return rows;

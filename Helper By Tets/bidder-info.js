@@ -1,6 +1,9 @@
 let accessToken = "";
 let publisherId = "";
 let bidderRows = [];
+let publisherSearchTimer = null;
+let publisherSearchResults = [];
+let bootstrapPublisherId = "";
 
 const HB_ID_BATCH_SIZE = 150;
 
@@ -29,6 +32,161 @@ async function fetchJson(url, options = {}) {
     throw new Error(`${response.status} ${text}`);
   }
   return response.json();
+}
+
+function getActivePublisherId() {
+  return $("publisherIdInput")?.value.trim() || publisherId;
+}
+
+function getPublisherSearchInput() {
+  return $("publisherSearchInput")?.value.trim() || "";
+}
+
+function setPublisherId(value) {
+  const field = $("publisherIdInput");
+  if (field) field.value = `${value || ""}`.trim();
+}
+
+function setPublisherHelper(text) {
+  const el = $("publisherHelper");
+  if (!el) return;
+  el.textContent = text || "";
+}
+
+function formatPublisherOption(publisher) {
+  const id = `${publisher?.id ?? ""}`.trim();
+  const name = `${publisher?.name || ""}`.trim();
+  return id && name ? `[${id}] ${name}` : "";
+}
+
+function renderPublisherSearchOptions(items = []) {
+  const list = $("publisherSearchList");
+  if (!list) return;
+
+  list.innerHTML = "";
+  items.forEach(item => {
+    const option = document.createElement("option");
+    option.value = formatPublisherOption(item);
+    list.appendChild(option);
+  });
+}
+
+function syncPublisherSelectionFromInput() {
+  const inputValue = getPublisherSearchInput();
+  const matchedPublisher = publisherSearchResults.find(item => formatPublisherOption(item) === inputValue);
+
+  if (matchedPublisher) {
+    setPublisherId(matchedPublisher.id);
+    setPublisherHelper(`Selected publisher: ${formatPublisherOption(matchedPublisher)}`);
+    return true;
+  }
+
+  if (/^\d+$/.test(inputValue)) {
+    setPublisherId(inputValue);
+    setPublisherHelper(`Selected publisher ID: ${inputValue}`);
+    return true;
+  }
+
+  return false;
+}
+
+async function searchPublishers(query) {
+  const contextPublisherId = getActivePublisherId() || bootstrapPublisherId;
+  if (!accessToken || !contextPublisherId) {
+    throw new Error("Missing auth token or publisher ID.");
+  }
+
+  const url =
+    `https://api.getpublica.com/v1/settings/publishers_names` +
+    `?access_token=${encodeURIComponent(accessToken)}` +
+    `&publisher_id=${encodeURIComponent(contextPublisherId)}` +
+    `&query=${encodeURIComponent(query)}`;
+
+  return fetchJson(url, { method: "GET" }).then(json => Array.isArray(json) ? json : []);
+}
+
+async function resolvePublisherDisplay(publisherIdValue) {
+  const resolvedPublisherId = `${publisherIdValue || ""}`.trim();
+  if (!resolvedPublisherId || !accessToken) {
+    return;
+  }
+
+  try {
+    const results = await searchPublishers(resolvedPublisherId);
+    publisherSearchResults = results;
+    renderPublisherSearchOptions(results);
+
+    const matchedPublisher = results.find(item => `${item?.id ?? ""}`.trim() === resolvedPublisherId);
+    if (matchedPublisher) {
+      const formatted = formatPublisherOption(matchedPublisher);
+      $("publisherSearchInput").value = formatted;
+      setPublisherId(matchedPublisher.id);
+      setPublisherHelper(`Selected publisher: ${formatted}`);
+      return;
+    }
+  } catch (error) {
+    console.error("Failed to resolve publisher display", error);
+  }
+
+  $("publisherSearchInput").value = resolvedPublisherId;
+  setPublisherId(resolvedPublisherId);
+  setPublisherHelper(`Selected publisher ID: ${resolvedPublisherId}`);
+}
+
+async function handlePublisherSearchInput() {
+  const query = getPublisherSearchInput();
+
+  if (publisherSearchTimer) {
+    clearTimeout(publisherSearchTimer);
+    publisherSearchTimer = null;
+  }
+
+  if (!query) {
+    publisherSearchResults = [];
+    renderPublisherSearchOptions([]);
+    setPublisherId("");
+    setPublisherHelper("Type to search publishers, then choose one to load Bidder Info.");
+    return;
+  }
+
+  if (syncPublisherSelectionFromInput()) {
+    return;
+  }
+
+  publisherSearchTimer = setTimeout(async () => {
+    try {
+      const results = await searchPublishers(query);
+      publisherSearchResults = results;
+      renderPublisherSearchOptions(results);
+      setPublisherHelper(results.length
+        ? `Found ${results.length} publisher${results.length === 1 ? "" : "s"}. Keep typing to narrow the list.`
+        : "No matching publishers found yet.");
+    } catch (error) {
+      console.error("Failed to search publishers", error);
+      setPublisherHelper(String(error?.message || error));
+    }
+  }, 250);
+}
+
+async function handlePublisherSelectionChange() {
+  bidderRows = [];
+  renderResults();
+
+  if (!syncPublisherSelectionFromInput()) {
+    return;
+  }
+
+  if (!getActivePublisherId()) {
+    setAuthStatus("Enter a publisher to continue.", true);
+    return;
+  }
+
+  try {
+    await loadBidders();
+  } catch (error) {
+    console.error("Failed to load bidders", error);
+    setAuthStatus(`Failed to load bidders: ${error.message}`, true);
+  }
 }
 
 function chunkArray(items, size) {
@@ -262,7 +420,7 @@ function exportBidders() {
 }
 
 async function loadBidders() {
-  const activePublisherId = publisherId;
+  const activePublisherId = getActivePublisherId();
   if (!activePublisherId) {
     throw new Error("Missing publisher ID.");
   }
@@ -300,16 +458,15 @@ async function loadBidders() {
 async function init() {
   accessToken = getBootstrapQueryValue("access_token");
   publisherId = getBootstrapQueryValue("publisher_id");
+  bootstrapPublisherId = publisherId || "";
 
   if (!accessToken) {
     setAuthStatus("Missing auth token.", true);
     return;
   }
 
-  if (!publisherId) {
-    setAuthStatus("Missing publisher ID.", true);
-    return;
-  }
+  $("publisherIdInput").value = publisherId;
+  $("publisherSearchInput").value = publisherId;
 
   $("searchInput").addEventListener("input", renderResults);
   $("statusFilter").addEventListener("change", () => {
@@ -325,6 +482,26 @@ async function init() {
     });
   });
   $("exportButton").addEventListener("click", exportBidders);
+
+  $("publisherSearchInput").addEventListener("input", () => {
+    handlePublisherSearchInput().catch(error => {
+      console.error("Failed to handle publisher search input", error);
+    });
+  });
+
+  $("publisherSearchInput").addEventListener("change", () => {
+    handlePublisherSelectionChange().catch(error => {
+      console.error("Failed to handle publisher selection", error);
+      setAuthStatus(`Failed to load bidders: ${error.message}`, true);
+    });
+  });
+
+  if (!getActivePublisherId()) {
+    setAuthStatus("Missing publisher.", true);
+    return;
+  }
+
+  await resolvePublisherDisplay(getActivePublisherId());
 
   try {
     await loadBidders();

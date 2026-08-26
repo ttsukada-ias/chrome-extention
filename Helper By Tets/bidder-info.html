@@ -51,10 +51,17 @@
 
     .toolbar {
       display: grid;
-      grid-template-columns: minmax(260px, 1.6fr) repeat(3, minmax(0, 1fr));
+      grid-template-columns: minmax(240px, 1.3fr) minmax(240px, 1.3fr) repeat(3, minmax(0, 1fr));
       gap: 12px;
       margin-bottom: 18px;
       align-items: end;
+    }
+
+    .publisher-helper {
+      margin-top: 6px;
+      color: #5d7172;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
     .field label {
@@ -206,6 +213,13 @@
     <div class="status" id="authStatus">Checking auth context...</div>
 
     <div class="toolbar">
+      <div class="field">
+        <label for="publisherSearchInput">Publisher</label>
+        <input type="text" id="publisherSearchInput" list="publisherSearchList" placeholder="Search by Publisher ID or Publisher Name" autocomplete="off" />
+        <datalist id="publisherSearchList"></datalist>
+        <input type="hidden" id="publisherIdInput" />
+        <div class="publisher-helper" id="publisherHelper">Type to search publishers, then choose one to load Bidder Info.</div>
+      </div>
       <div class="field">
         <label for="searchInput">Search</label>
         <input type="text" id="searchInput" placeholder="Search by ID, name, or bidder key..." />
