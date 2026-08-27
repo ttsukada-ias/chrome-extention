@@ -3,97 +3,87 @@
     container.textContent = "";
   }
 
-  function createToggle() {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "tree-toggle";
-    button.textContent = "-";
-    button.setAttribute("aria-label", "Collapse");
-    return button;
+  // --- JSON tree ---
+
+  function valueType(value) {
+    if (value === null)             return "null";
+    if (typeof value === "boolean") return "boolean";
+    if (typeof value === "number")  return "number";
+    if (typeof value === "string")  return "string";
+    if (Array.isArray(value))       return "array";
+    return "object";
   }
 
-  function createLeafSpacer() {
-    const spacer = document.createElement("span");
-    spacer.className = "tree-spacer";
-    return spacer;
-  }
+  function renderJsonValue(key, value, isRoot) {
+    const type = valueType(value);
+    const isComplex = type === "object" || type === "array";
 
-  function createNode(label, summary, children) {
+    if (!isComplex) {
+      const row = document.createElement("div");
+      row.className = "tree-row tree-leaf";
+
+      const keyEl = document.createElement("span");
+      keyEl.className = "tree-key";
+      keyEl.textContent = key;
+
+      const colon = document.createElement("span");
+      colon.className = "tree-colon";
+      colon.textContent = " : ";
+
+      const valEl = document.createElement("span");
+      valEl.className = `tree-value tree-val-${type}`;
+      valEl.textContent = JSON.stringify(value);
+
+      row.append(keyEl, colon, valEl);
+      return row;
+    }
+
     const node = document.createElement("div");
     node.className = "tree-node";
 
     const row = document.createElement("div");
-    row.className = "tree-row";
+    row.className = "tree-row tree-parent-row";
+    row.style.cursor = "pointer";
 
-    const toggle = createToggle();
-    const labelEl = document.createElement("span");
-    labelEl.className = "tree-label";
-    labelEl.textContent = label;
+    const toggleEl = document.createElement("span");
+    toggleEl.className = "tree-toggle-icon";
+    toggleEl.textContent = "-";
 
-    const summaryEl = document.createElement("span");
-    summaryEl.className = "tree-summary";
-    summaryEl.textContent = summary;
+    const keyEl = document.createElement("span");
+    keyEl.className = "tree-key";
+    keyEl.textContent = isRoot ? "JSON" : key;
 
-    row.append(toggle, labelEl, summaryEl);
+    const children = document.createElement("div");
+    children.className = "tree-children";
+
+    const entries = type === "array"
+      ? value.map((item, i) => [String(i), item])
+      : Object.entries(value);
+
+    entries.forEach(([k, v]) => children.appendChild(renderJsonValue(k, v, false)));
+
+    row.append(toggleEl, keyEl);
     node.append(row, children);
 
-    toggle.addEventListener("click", () => {
+    row.addEventListener("click", () => {
       const collapsed = node.classList.toggle("collapsed");
-      toggle.textContent = collapsed ? "+" : "-";
-      toggle.setAttribute("aria-label", collapsed ? "Expand" : "Collapse");
+      toggleEl.textContent = collapsed ? "+" : "-";
     });
 
     return node;
   }
 
-  function createJsonLeaf(label, value) {
-    const row = document.createElement("div");
-    row.className = "tree-row tree-leaf";
-
-    const labelEl = document.createElement("span");
-    labelEl.className = "tree-label";
-    labelEl.textContent = label;
-
-    const valueEl = document.createElement("span");
-    valueEl.className = "tree-value";
-    valueEl.textContent = JSON.stringify(value);
-
-    row.append(createLeafSpacer(), labelEl, valueEl);
-    return row;
-  }
-
-  function renderJsonValue(label, value) {
-    if (value === null || typeof value !== "object") {
-      return createJsonLeaf(label, value);
-    }
-
-    const children = document.createElement("div");
-    children.className = "tree-children";
-    const isArray = Array.isArray(value);
-    const entries = isArray
-      ? value.map((item, index) => [String(index), item])
-      : Object.entries(value);
-
-    entries.forEach(([key, child]) => {
-      children.appendChild(renderJsonValue(isArray ? `[${key}]` : key, child));
-    });
-
-    const summary = isArray
-      ? `Array(${value.length})`
-      : `Object(${Object.keys(value).length})`;
-    return createNode(label, summary, children);
-  }
-
   function renderJsonTree(container, value) {
     clear(container);
-    const root = renderJsonValue("root", value);
-    container.appendChild(root);
+    container.appendChild(renderJsonValue("JSON", value, true));
   }
+
+  // --- XML tree ---
 
   function textNodes(element) {
     return Array.from(element.childNodes || [])
-      .filter(node => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.CDATA_SECTION_NODE)
-      .map(node => String(node.nodeValue || "").replace(/\s+/g, " ").trim())
+      .filter(n => n.nodeType === Node.TEXT_NODE || n.nodeType === Node.CDATA_SECTION_NODE)
+      .map(n => String(n.nodeValue || "").replace(/\s+/g, " ").trim())
       .filter(Boolean);
   }
 
@@ -101,19 +91,23 @@
     const children = document.createElement("div");
     children.className = "tree-children";
 
-    Array.from(element.attributes || []).forEach(attribute => {
+    Array.from(element.attributes || []).forEach(attr => {
       const row = document.createElement("div");
       row.className = "tree-row tree-leaf";
 
-      const label = document.createElement("span");
-      label.className = "tree-label tree-attribute";
-      label.textContent = `@${attribute.name}`;
+      const keyEl = document.createElement("span");
+      keyEl.className = "tree-key tree-attribute";
+      keyEl.textContent = `@${attr.name}`;
 
-      const value = document.createElement("span");
-      value.className = "tree-value";
-      value.textContent = JSON.stringify(attribute.value);
+      const colon = document.createElement("span");
+      colon.className = "tree-colon";
+      colon.textContent = " : ";
 
-      row.append(createLeafSpacer(), label, value);
+      const valEl = document.createElement("span");
+      valEl.className = "tree-value tree-val-string";
+      valEl.textContent = JSON.stringify(attr.value);
+
+      row.append(keyEl, colon, valEl);
       children.appendChild(row);
     });
 
@@ -121,15 +115,19 @@
       const row = document.createElement("div");
       row.className = "tree-row tree-leaf";
 
-      const label = document.createElement("span");
-      label.className = "tree-label";
-      label.textContent = "#text";
+      const keyEl = document.createElement("span");
+      keyEl.className = "tree-key";
+      keyEl.textContent = "#text";
 
-      const value = document.createElement("span");
-      value.className = "tree-value";
-      value.textContent = JSON.stringify(text);
+      const colon = document.createElement("span");
+      colon.className = "tree-colon";
+      colon.textContent = " : ";
 
-      row.append(createLeafSpacer(), label, value);
+      const valEl = document.createElement("span");
+      valEl.className = "tree-value tree-val-string";
+      valEl.textContent = JSON.stringify(text);
+
+      row.append(keyEl, colon, valEl);
       children.appendChild(row);
     });
 
@@ -137,14 +135,30 @@
       children.appendChild(renderXmlElement(child));
     });
 
-    const childCount = (element.children || []).length;
-    const attributeCount = (element.attributes || []).length;
-    const parts = [];
-    if (attributeCount) parts.push(`${attributeCount} attr${attributeCount === 1 ? "" : "s"}`);
-    if (childCount) parts.push(`${childCount} child${childCount === 1 ? "" : "ren"}`);
-    const summary = parts.length ? parts.join(", ") : "leaf";
+    const node = document.createElement("div");
+    node.className = "tree-node";
 
-    return createNode(element.nodeName, summary, children);
+    const row = document.createElement("div");
+    row.className = "tree-row tree-parent-row";
+    row.style.cursor = "pointer";
+
+    const toggleEl = document.createElement("span");
+    toggleEl.className = "tree-toggle-icon";
+    toggleEl.textContent = "-";
+
+    const keyEl = document.createElement("span");
+    keyEl.className = "tree-key";
+    keyEl.textContent = element.nodeName;
+
+    row.append(toggleEl, keyEl);
+    node.append(row, children);
+
+    row.addEventListener("click", () => {
+      const collapsed = node.classList.toggle("collapsed");
+      toggleEl.textContent = collapsed ? "+" : "-";
+    });
+
+    return node;
   }
 
   function renderXmlTree(container, element) {

@@ -23,9 +23,7 @@
       color: var(--text);
     }
 
-    .wrap {
-      padding: 16px;
-    }
+    .wrap { padding: 16px; }
 
     .title {
       font-size: 18px;
@@ -45,23 +43,54 @@
       gap: 10px;
     }
 
-    .link-btn {
-      display: block;
-      width: 100%;
+    /* Each item wraps handle + button */
+    .list-item {
+      display: flex;
+      align-items: stretch;
       border: 1px solid var(--border);
       border-radius: 12px;
       background: var(--surface);
-      color: var(--text);
-      text-align: left;
-      padding: 12px 14px;
-      cursor: pointer;
-      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+      cursor: default;
     }
 
-    .link-btn:hover {
-      transform: translateY(-1px);
+    .list-item:hover {
       border-color: var(--brand);
       box-shadow: 0 8px 20px rgba(233, 162, 74, 0.20);
+    }
+
+    .list-item.dragging {
+      opacity: 0.4;
+    }
+
+    .list-item.drag-over {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px rgba(233, 162, 74, 0.40);
+    }
+
+    .drag-handle {
+      display: flex;
+      align-items: center;
+      padding: 0 8px 0 10px;
+      cursor: grab;
+      color: #cbb89a;
+      font-size: 14px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .drag-handle:active { cursor: grabbing; }
+
+    .link-btn {
+      flex: 1;
+      border: none;
+      border-radius: 0 12px 12px 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      padding: 12px 14px 12px 4px;
+      cursor: pointer;
+      min-width: 0;
     }
 
     .link-title {
@@ -81,33 +110,7 @@
   <div class="wrap">
     <h1 class="title">Tech Util by Tets</h1>
     <p class="subtitle">Open standalone technical helper tools in a new tab.</p>
-
-    <div class="list">
-      <button type="button" class="link-btn" id="openJsonToCsv">
-        <div class="link-title">Json to CSV</div>
-        <div class="link-copy">Convert pasted JSON into a downloadable CSV file.</div>
-      </button>
-
-      <button type="button" class="link-btn" id="openJsonBeautilier">
-        <div class="link-title">Json Beautilier</div>
-        <div class="link-copy">Beautify pasted JSON and copy it to your clipboard.</div>
-      </button>
-
-      <button type="button" class="link-btn" id="openXmlBeautifier">
-        <div class="link-title">XML Beautifier</div>
-        <div class="link-copy">Beautify pasted XML and copy it to your clipboard.</div>
-      </button>
-
-      <button type="button" class="link-btn" id="openXmlToJson">
-        <div class="link-title">XML to JSON</div>
-        <div class="link-copy">Convert XML into structured JSON for easier viewing.</div>
-      </button>
-
-      <button type="button" class="link-btn" id="openUrlEncodeDecode">
-        <div class="link-title">URL Encode/Decode</div>
-        <div class="link-copy">Encode text for URLs or decode URL-encoded strings.</div>
-      </button>
-    </div>
+    <div class="list" id="toolList"></div>
   </div>
 
   <script src="popup.js"></script>

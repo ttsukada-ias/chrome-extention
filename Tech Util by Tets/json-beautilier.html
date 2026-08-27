@@ -167,49 +167,62 @@
 
     .tree-row {
       display: flex;
-      align-items: flex-start;
-      gap: 7px;
-      min-height: 24px;
+      align-items: baseline;
+      gap: 5px;
+      min-height: 22px;
+      line-height: 1.6;
       white-space: nowrap;
     }
 
-    .tree-toggle {
-      width: 20px;
-      min-width: 20px;
-      min-height: 20px;
-      height: 20px;
-      padding: 0;
-      border-radius: 5px;
-      font: 700 13px/18px Menlo, Monaco, Consolas, monospace;
-      text-align: center;
+    .tree-parent-row {
+      user-select: none;
     }
 
-    .tree-spacer {
-      width: 20px;
-      min-width: 20px;
+    .tree-parent-row:hover .tree-key {
+      text-decoration: underline;
     }
 
-    .tree-children {
-      margin-left: 27px;
+    .tree-toggle-icon {
+      font-size: 13px;
+      color: var(--muted);
+      width: 14px;
+      display: inline-block;
+      flex-shrink: 0;
     }
 
-    .tree-node.collapsed > .tree-children {
-      display: none;
-    }
 
-    .tree-label {
+
+    .tree-key {
       color: #2f2418;
-      font-weight: 700;
+      font-weight: 600;
     }
 
-    .tree-summary {
+    .tree-attribute {
+      color: #5a3e8a;
+    }
+
+    .tree-colon {
       color: var(--muted);
     }
 
     .tree-value {
-      color: #8a541b;
       white-space: pre-wrap;
       word-break: break-word;
+    }
+
+    .tree-val-string  { color: #7a4f1f; }
+    .tree-val-number  { color: #2a7a45; }
+    .tree-val-boolean { color: #7b2fbe; }
+    .tree-val-null    { color: #888; font-style: italic; }
+
+    .tree-children {
+      margin-left: 28px;
+      border-left: 1px dotted #d5bfa0;
+      padding-left: 10px;
+    }
+
+    .tree-node.collapsed > .tree-children {
+      display: none;
     }
 
     .plain-output {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>URL Encode/Decode</title>
+  <title>URL Parse / Encode / Decode</title>
   <style>
     :root {
       --brand: #e9a24a;
@@ -41,26 +41,16 @@
       justify-content: space-between;
       gap: 16px;
       align-items: flex-start;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
     }
 
-    h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
 
     .meta {
       margin: 0;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.45;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
     }
 
     button {
@@ -75,43 +65,28 @@
       padding: 10px 14px;
     }
 
-    button:hover:not(:disabled) {
-      background: #ffe3b8;
-      border-color: #d99a45;
-    }
+    button:hover:not(:disabled) { background: #ffe3b8; border-color: #d99a45; }
+    button:disabled { cursor: not-allowed; opacity: 0.55; }
+    .secondary { background: #ffffff; }
 
-    button:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
-
-    .secondary {
-      background: #ffffff;
-    }
-
+    /* Workspace: input left, output right */
     .workspace {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 16px;
-      align-items: stretch;
+      align-items: start;
     }
 
-    .panel {
-      display: grid;
-      grid-template-rows: auto minmax(420px, 1fr);
-      gap: 10px;
-      min-width: 0;
-    }
-
-    label {
+    .panel-label {
       font-size: 13px;
       font-weight: 700;
-      color: var(--text);
+      margin-bottom: 8px;
+      display: block;
     }
 
     textarea {
       width: 100%;
-      min-height: 420px;
+      min-height: 320px;
       resize: vertical;
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -128,12 +103,104 @@
       border-color: var(--brand);
     }
 
-    textarea[readonly] {
+    textarea[readonly] { background: #fffaf3; }
+
+    /* Action bar between panels */
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 14px 0;
+      align-items: center;
+    }
+
+    .divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 2px;
+    }
+
+    /* Parse output panel */
+    .parse-output {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
       background: #fffaf3;
+      min-height: 320px;
+    }
+
+    .parse-output.visible { display: block; }
+
+    .url-parts {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .url-part-row {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 8px;
+      align-items: baseline;
+    }
+
+    .url-part-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      font-family: Arial, Helvetica, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .url-part-value { color: var(--text); word-break: break-all; }
+
+    .params-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .params-table thead th {
+      background: #f9f2e6;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 7px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .params-table tbody tr { border-bottom: 1px solid #f2e8d9; }
+    .params-table tbody tr:last-child { border-bottom: none; }
+    .params-table tbody tr:hover { background: #fffaf3; }
+
+    .params-table td {
+      padding: 7px 14px;
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      vertical-align: top;
+      word-break: break-all;
+    }
+
+    .param-key { color: #7a4f1f; font-weight: 600; white-space: nowrap; }
+    .param-eq  { color: var(--muted); padding: 7px 4px; font-family: Menlo, Monaco, Consolas, monospace; font-size: 13px; }
+    .param-val { color: var(--text); }
+
+    .no-params {
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
     }
 
     .status {
-      margin-top: 14px;
+      margin-top: 12px;
       min-height: 20px;
       color: var(--muted);
       font-size: 13px;
@@ -150,26 +217,9 @@
     }
 
     @media (max-width: 820px) {
-      body {
-        padding: 14px;
-      }
-
-      .page {
-        padding: 18px;
-      }
-
-      .header,
-      .workspace {
-        grid-template-columns: 1fr;
-      }
-
-      .header {
-        display: grid;
-      }
-
-      .actions {
-        justify-content: flex-start;
-      }
+      body { padding: 14px; }
+      .page { padding: 18px; }
+      .workspace { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -177,27 +227,44 @@
   <main class="page">
     <div class="header">
       <div>
-        <h1>URL Encode/Decode</h1>
-        <p class="meta">Encode text into a URL-safe string, decode URL-encoded text, or parse a single-line URL into readable query lines.</p>
-      </div>
-      <div class="actions">
-        <button type="button" id="encodeButton">Encode</button>
-        <button type="button" id="decodeButton">Decode</button>
-        <button type="button" id="parseButton">URL Parse</button>
-        <button type="button" class="secondary" id="copyButton" disabled>Copy</button>
+        <h1>URL Parse / Encode / Decode</h1>
+        <p class="meta">Paste a URL or text — then Parse, Encode, or Decode.</p>
       </div>
     </div>
 
     <div class="workspace">
-      <section class="panel">
-        <label for="urlInput">Input</label>
-        <textarea id="urlInput" spellcheck="false" placeholder="https://example.com/search?q=hello world&category=a/b"></textarea>
-      </section>
+      <!-- Input -->
+      <div>
+        <span class="panel-label">Input</span>
+        <textarea id="urlInput" spellcheck="false" placeholder="https://example.com/search?q=hello+world&amp;lang=en#results"></textarea>
+      </div>
 
-      <section class="panel">
-        <label for="urlOutput">Output</label>
-        <textarea id="urlOutput" spellcheck="false" readonly></textarea>
-      </section>
+      <!-- Output -->
+      <div>
+        <span class="panel-label" id="outputLabel">Output</span>
+
+        <!-- Text output (encode/decode) -->
+        <textarea id="urlOutput" spellcheck="false" readonly style="display:none"></textarea>
+
+        <!-- Structured parse output -->
+        <div class="parse-output" id="parseOutput">
+          <div class="url-parts" id="urlParts"></div>
+          <table class="params-table" id="paramsTable">
+            <thead><tr><th>Key</th><th></th><th>Value</th></tr></thead>
+            <tbody id="paramsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <button type="button" id="parseButton">Parse</button>
+      <div class="divider"></div>
+      <button type="button" id="encodeButton">Encode</button>
+      <button type="button" id="decodeButton">Decode</button>
+      <div class="divider"></div>
+      <button type="button" class="secondary" id="copyButton" disabled>Copy</button>
+      <button type="button" class="secondary" id="clearButton">Clear</button>
     </div>
 
     <div class="status" id="status"></div>

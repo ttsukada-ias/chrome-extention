@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Json Diff</title>
+  <style>
+    :root {
+      --brand: #e9a24a;
+      --text: #2f2418;
+      --muted: #6f6254;
+      --surface: #ffffff;
+      --border: #ead7bd;
+      --danger: #a12d2d;
+      --danger-bg: #fff2f2;
+      --added-bg: #dff7e0;
+      --added-border: #a9dcae;
+      --removed-bg: #ffe1e1;
+      --removed-border: #eab2b2;
+      --empty-bg: #f5f0e8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #fffaf3 0%, #fff4e6 100%);
+      color: var(--text);
+      padding: 24px;
+    }
+
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(47, 36, 24, 0.08);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    .meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid #e3ba7a;
+      border-radius: 8px;
+      background: #fff0d8;
+      color: var(--text);
+      cursor: pointer;
+      font: 700 13px/1 Arial, Helvetica, sans-serif;
+      min-height: 36px;
+      padding: 10px 14px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #ffe3b8;
+      border-color: #d99a45;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .secondary {
+      background: #ffffff;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: stretch;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      display: grid;
+      grid-template-rows: auto minmax(180px, 1fr);
+      gap: 10px;
+      min-width: 0;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      background: #fffdfa;
+      color: var(--text);
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    textarea:focus {
+      outline: 2px solid rgba(233, 162, 74, 0.30);
+      border-color: var(--brand);
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .legend-swatch {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch span {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      display: inline-block;
+      border: 1px solid transparent;
+    }
+
+    .legend-swatch .added { background: var(--added-bg); border-color: var(--added-border); }
+    .legend-swatch .removed { background: var(--removed-bg); border-color: var(--removed-border); }
+
+    .diff-panel {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fffaf3;
+    }
+
+    .diff-panel-header {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border);
+      background: #fff4e6;
+    }
+
+    .diff-panel-header .diff-col-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .diff-panel-header .diff-col-title:first-child {
+      border-right: 1px solid var(--border);
+    }
+
+    .diff-panel-header button {
+      min-height: 28px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .diff-table {
+      max-height: 560px;
+      overflow: auto;
+      font-family: Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .diff-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .diff-cell {
+      padding: 1px 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 1.6em;
+    }
+
+    .diff-cell.diff-cell-left {
+      border-right: 1px solid var(--border);
+    }
+
+    .diff-cell.added {
+      background: var(--added-bg);
+    }
+
+    .diff-cell.removed {
+      background: var(--removed-bg);
+    }
+
+    .diff-cell.empty {
+      background: var(--empty-bg);
+    }
+
+    .status {
+      margin-top: 14px;
+      min-height: 20px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .status.error {
+      display: inline-block;
+      color: var(--danger);
+      background: var(--danger-bg);
+      border: 1px solid #f1c7c7;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    @media (max-width: 820px) {
+      body {
+        padding: 14px;
+      }
+
+      .page {
+        padding: 18px;
+      }
+
+      .header,
+      .workspace,
+      .diff-panel-header,
+      .diff-row {
+        grid-template-columns: 1fr;
+      }
+
+      .header {
+        display: grid;
+      }
+
+      .actions {
+        justify-content: flex-start;
+      }
+
+      .diff-panel-header .diff-col-title:first-child,
+      .diff-cell.diff-cell-left {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="header">
+      <div>
+        <h1>Json Diff</h1>
+        <p class="meta">Paste two JSON payloads, compare them, and see the alphabetically-sorted, beautified output with differences highlighted.</p>
+      </div>
+      <div class="actions">
+        <button type="button" id="compareButton">Compare</button>
+        <button type="button" class="secondary" id="clearButton">Clear</button>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <section class="panel">
+        <label for="jsonInputA">JSON A</label>
+        <textarea id="jsonInputA" spellcheck="false" placeholder='{"id":1,"name":"Example","tags":["alpha","beta"]}'></textarea>
+      </section>
+
+      <section class="panel">
+        <label for="jsonInputB">JSON B</label>
+        <textarea id="jsonInputB" spellcheck="false" placeholder='{"id":1,"name":"Example","tags":["beta","gamma"]}'></textarea>
+      </section>
+    </div>
+
+    <div class="legend">
+      <div class="legend-swatch"><span class="removed"></span> Only in JSON A</div>
+      <div class="legend-swatch"><span class="added"></span> Only in JSON B</div>
+    </div>
+
+    <div class="diff-panel">
+      <div class="diff-panel-header">
+        <div class="diff-col-title">
+          JSON A (sorted &amp; beautified)
+          <button type="button" class="secondary" id="copyAButton" disabled>Copy</button>
+        </div>
+        <div class="diff-col-title">
+          JSON B (sorted &amp; beautified)
+          <button type="button" class="secondary" id="copyBButton" disabled>Copy</button>
+        </div>
+      </div>
+      <div class="diff-table" id="diffTable"></div>
+    </div>
+
+    <div class="status" id="status"></div>
+  </main>
+
+  <script src="json-diff.js"></script>
+</body>
+</html>
