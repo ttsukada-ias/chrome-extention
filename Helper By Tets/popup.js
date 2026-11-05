@@ -2,6 +2,7 @@ const LATEST_PAYLOAD_STORAGE_KEY = "latestPublicaAuthPayload";
 const TAB_PAYLOAD_STORAGE_KEY_PREFIX = "publicaAuthPayload:";
 const TOOL_ORDER_KEY = "toolOrder";
 const TOOL_PAGES = {
+  openLiveDashboard: "live-dashboard.html",
   openRtbStream: "rtbstream.html",
   openLiveLogs: "live-logs.html",
   openBidderChannelMappings: "bidder-channel-mappings.html",

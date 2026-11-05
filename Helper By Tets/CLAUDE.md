@@ -8,7 +8,7 @@ There is no build step. Load the extension directly as an unpacked Chrome extens
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode**
-3. Click **Load unpacked** → select `/Users/ttsukada/Tools/GitHubRepo/chrome-extention`
+3. Click **Load unpacked** → select `/Users/ttsukada/Tools/GitHubRepo/chrome-extention/Helper By Tets`
 
 After editing any file, click the reload icon on the extension card in `chrome://extensions`. Tool pages (`.html`) can simply be refreshed in their tab.
 
@@ -19,9 +19,9 @@ This is a Manifest V3 Chrome extension targeting `https://app.getpublica.com` wi
 ### Auth capture pipeline
 
 ```
-page-bridge.js          — injected into app.getpublica.com page context; intercepts
-                          XHR/fetch to api.getpublica.com and extracts access_token
-                          and publisher_id from URLs, headers, or JSON bodies
+page-bridge.js          — injected into app.getpublica.com page context; reads
+                          Publica local-storage access_token entries and detects
+                          publisher changes through hash and History API navigation
 content.js              — content script that injects page-bridge.js into the page
                           and relays messages from page context → extension context
 background.js           — service worker; receives PUBLICA_AUTH_CONTEXT messages

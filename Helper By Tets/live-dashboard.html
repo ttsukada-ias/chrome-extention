@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Dashboard by Tets</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; background: linear-gradient(180deg, #f6fcfb, #edf8f6); color: #163233; font-family: Arial, Helvetica, sans-serif; }
+    .page { max-width: 1380px; margin: auto; padding: 24px; background: white; border: 1px solid #d7e7e5; border-radius: 18px; box-shadow: 0 18px 44px #16323314; }
+    h1 { margin: 0 0 8px; font-size: 32px; }
+    .intro, .hint { color: #5f7172; line-height: 1.5; }
+    .intro { margin: 0 0 20px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+    .publisher-field { width: 340px; }
+    .publisher-field input { width: 100%; }
+    .publisher-helper { max-width: 340px; margin-top: 5px; color: #5f7172; font-size: 12px; }
+    label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: bold; }
+    input, select, button { padding: 10px 12px; border: 1px solid #cfe1df; border-radius: 10px; font: inherit; color: inherit; background: white; }
+    input { width: 190px; }
+    button { background: #0d6e8a; color: white; border-color: #0d6e8a; font-weight: bold; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .auto-refresh { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 10px; background: #e5f8f3; color: #21887c; }
+    .status { margin: 18px 0; padding: 12px 14px; border-radius: 12px; background: #eef8f7; color: #1f7f78; line-height: 1.5; }
+    .status.warn { background: #fff4e8; color: #a15c00; }
+    .chart-card { position: relative; border: 1px solid #d7e7e5; border-radius: 14px; padding: 20px; }
+    h2 { font-size: 22px; margin: 0 0 6px; }
+    .period-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 18px; }
+    .period-options { display: flex; flex-wrap: wrap; gap: 4px; }
+    .period-options button { padding: 8px 10px; font-size: 12px; color: #163233; background: white; border-color: #d7e7e5; }
+    .period-options button[aria-pressed=true] { background: #dff0ee; border-color: #26988f; }
+    #extraFilters { display: contents; }
+    .filter-help { display: flex; gap: 12px; align-items: center; margin-top: 14px; }
+    .filter-help button { flex-shrink: 0; padding: 7px 10px; font-size: 12px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+    .multiselect { position: relative; width: 240px; margin: 0; }
+    .multiselect > summary { border: 1px solid #cfe1df; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: bold; background: white; }
+    .multiselect summary span { float: right; font-weight: normal; font-size: 13px; color: #5f7172; }
+    .dropdown-panel { position: absolute; z-index: 4; width: 340px; max-width: calc(100vw - 48px); padding: 14px; border: 1px solid #cfe1df; border-radius: 10px; background: white; box-shadow: 0 8px 24px #16323322; }
+    .dropdown-panel input[type=search] { width: 100%; }
+    .selection-actions { display: flex; gap: 8px; margin: 10px 0; }
+    .selection-actions button { font-size: 12px; padding: 6px 10px; }
+    .checkbox-options { max-height: 290px; overflow-y: auto; }
+    .checkbox-options label { display: flex; gap: 9px; align-items: center; padding: 8px 0; font-weight: normal; overflow-wrap: anywhere; }
+    input[type=checkbox] { width: 16px; height: 16px; flex-shrink: 0; accent-color: #26988f; }
+    .chart-card { margin-bottom: 18px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px 20px; margin: 12px 0; font-size: 13px; }
+    .legend-item { display: flex; gap: 6px; align-items: center; padding: 5px 7px; border: 1px solid #d7e7e5; border-radius: 6px; background: #f6fcfb; color: #163233; font-size: 13px; font-weight: normal; }
+    .legend-item[aria-pressed=false] { opacity: .5; text-decoration: line-through; background: white; }
+    .legend-item:focus-visible { outline: 2px solid #0d6e8a; outline-offset: 2px; }
+    .chart-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .chart-tools button { padding: 6px 10px; font-size: 12px; background: #eef8f7; border-color: #d7e7e5; color: #0d6e8a; }
+    .chart { cursor: crosshair; touch-action: pan-y; user-select: none; }
+    .zoom-selection { fill: #57c3bb33; stroke: #26988f; pointer-events: none; }
+    .chart-tooltip { position: absolute; z-index: 3; width: 350px; max-width: calc(100% - 16px); max-height: min(340px, 55vh); overflow-y: auto; padding: 14px 16px; border: 1px solid #d7e7e5; border-radius: 8px; background: #fffffff5; box-shadow: 0 6px 24px #16323325; font-size: 13px; }
+    .tooltip-title { display: block; font-size: 14px; }
+    .tooltip-date { color: #5f7172; font-size: 12px; margin: 5px 0 12px; }
+    .tooltip-partner { border-top: 1px solid #e3efee; padding: 10px 0 2px; }
+    .tooltip-row { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 5px 8px; align-items: center; margin: 9px 0; }
+    .tooltip-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .tooltip-value { text-align: right; }
+    .tooltip-sample-date { grid-column: 2 / 4; color: #5f7172; font-size: 11px; }
+    .hover-guide { stroke: #8ba3a4; stroke-width: 1; stroke-dasharray: 4 4; }
+    .swatch { width: 24px; border-top: 3px solid; }
+    .chart-scroll { overflow-x: auto; }
+    .chart { min-width: 680px; }
+    .multiselect:focus-within { outline-offset: 3px; }
+    .chart { width: 100%; height: auto; display: block; margin-top: 14px; }
+    .chart .data-point:hover, .chart .data-point:focus { fill: var(--point-color); outline: none; }
+    .hint { font-size: 13px; }
+    #emptyState { text-align: center; padding: 70px 12px; color: #5f7172; }
+    [hidden] { display: none !important; }
+    details { margin-top: 18px; }
+    summary { cursor: pointer; color: #0d6e8a; }
+    .table-wrap { max-height: 320px; overflow: auto; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid #e3efee; }
+    th { background: #eef8f7; position: sticky; top: 0; }
+    @media (max-width: 600px) { body { padding: 10px; } .page { padding: 16px; } .chart-card { padding: 12px; } .toolbar > div, input, select { width: 100%; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Live Dashboard</h1>
+    <p class="intro">Explore Publica live performance over time. Select demand sources and KPIs to compare their live performance.</p>
+    <form id="requestForm" class="toolbar">
+      <div class="publisher-field">
+        <label for="publisherSearchInput">Publisher</label>
+        <input id="publisherSearchInput" list="publisherSearchList" required autocomplete="off" placeholder="Search by Publisher ID or Publisher Name" aria-describedby="publisherHelper" />
+        <datalist id="publisherSearchList"></datalist>
+        <input id="publisherId" type="hidden" />
+        <div id="publisherHelper" class="publisher-helper">Search by publisher name or ID.</div>
+      </div>
+      <div><label for="timezone">Timezone</label><input id="timezone" list="timezoneOptions" required value="UTC" /><datalist id="timezoneOptions"></datalist></div>
+      <button id="refreshButton" type="submit">Refresh data</button>
+      <label class="auto-refresh"><input type="checkbox" id="autoRefresh" checked />Auto-refresh every minute</label>
+    </form>
+    <div id="status" class="status" role="status" aria-live="polite">Checking auth context…</div>
+    <section class="period-bar" aria-label="Period">
+      <strong>Period</strong><div id="periodOptions" class="period-options"></div>
+    </section>
+    <div class="filters">
+      <details class="multiselect" id="sourceDropdown">
+        <summary>Demand source <span id="sourceSummary">Loading…</span></summary>
+        <div class="dropdown-panel">
+          <label for="sourceSearch">Find demand sources</label>
+          <input id="sourceSearch" type="search" placeholder="Search demand sources" autocomplete="off" />
+          <div class="selection-actions"><button type="button" id="selectAllSources">Select all</button><button type="button" id="clearSources">Clear</button></div>
+          <div id="sourceOptions" class="checkbox-options"></div>
+        </div>
+      </details>
+      <div id="extraFilters"></div>
+      <details class="multiselect" id="kpiDropdown">
+        <summary>KPI <span id="kpiSummary">1 selected</span></summary>
+        <div class="dropdown-panel">
+          <div class="selection-actions"><button type="button" id="selectAllKpis">Select all</button><button type="button" id="clearKpis">Clear</button></div>
+          <div id="kpiOptions" class="checkbox-options"></div>
+        </div>
+      </details>
+    </div>
+    <div class="filter-help"><button type="button" id="clearDashboardFilters">Clear filters</button><span class="hint">Demand filters and supply filters each use one category at a time. Changing filters clears incompatible selections. Route and destination filters use their mapped channels.</span></div>
+    <p class="hint">Selected latency KPIs share one graph in milliseconds; other KPIs have separate graphs. Each selected filter item or combination has its own line. Clear all filters to show publisher totals. Hover or focus a point for its exact date and value.</p>
+    <div id="emptyState">Load data to view the graphs.</div>
+    <div id="charts"></div>
+  </main>
+  <script src="dashboard-filters.js"></script>
+  <script src="live-dashboard.js"></script>
+</body>
+</html>
