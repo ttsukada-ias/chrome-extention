@@ -966,6 +966,10 @@ function renderResults() {
     const columns = tableEntry.columns;
     const table = document.createElement("div");
     table.className = "results-table";
+    if (tableEntry.sourceType !== "channel-eleaai") {
+      // 220px min per column + 8px gaps; keeps rows as wide as the header so no column is clipped
+      table.style.minWidth = `${columns.length * 220 + (columns.length - 1) * 8}px`;
+    }
 
     const header = document.createElement("div");
     header.className = "results-table-header";
