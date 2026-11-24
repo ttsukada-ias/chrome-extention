@@ -2,6 +2,16 @@
 
 This repo can now be loaded directly as an unpacked Chrome extension.
 
+## Version 2.4.2
+
+- Fixes Live Logs results tables clipping columns beyond the page width
+  (for example `unwrapped_vast` in Bidder + Response); the table now scrolls
+  horizontally instead.
+
+Upload `helper-by-tets-v2.4.2.zip` to the existing Chrome Web Store item's package tab
+and submit it for review. The ZIP contains the extension's runtime files with
+`manifest.json` at its root.
+
 ## Version 2.4.1
 
 - Removes the unused `tabs` permission identified by Chrome Web Store review.
