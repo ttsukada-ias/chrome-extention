@@ -48,8 +48,9 @@ function showParseOutput(parsed, paramCount) {
     </div>`
   ).join("");
 
-  // Params table
-  const params = [...parsed.searchParams.entries()];
+  // Params table: split the raw query ourselves instead of using parsed.searchParams, which decodes
+  // "%AD"/"%CA" inside macros like %%ADVERTISING_…%% / %%CACHEBUSTER%% into "�"
+  const params = parseQueryParams(parsed.search);
   if (params.length === 0) {
     paramsTable.style.display = "none";
   } else {
@@ -69,7 +70,6 @@ function showParseOutput(parsed, paramCount) {
   if (params.length) {
     lines.push("");
     lines.push("Query Parameters:");
-    // searchParams values are already decoded ("+" → space, %XX → chars); decoding again breaks on literal "%" such as %%MACRO%%
     params.forEach(([k, v]) => lines.push(`  ${k} = ${v}`));
   }
   lastCopyText = lines.join("\n");
@@ -128,6 +128,18 @@ function lenientDecode(text) {
         try { return decodeURIComponent(seq); } catch { return seq; }
       });
     }
+  });
+}
+
+// Returns [key, value] pairs from a raw "?a=1&b=2" string, decoded with lenientDecode ("+" → space).
+function parseQueryParams(search) {
+  const query = search.startsWith("?") ? search.slice(1) : search;
+  if (!query) return [];
+  return query.split("&").filter(Boolean).map(pair => {
+    const eq = pair.indexOf("=");
+    const key = eq === -1 ? pair : pair.slice(0, eq);
+    const value = eq === -1 ? "" : pair.slice(eq + 1);
+    return [lenientDecode(key.replace(/\+/g, " ")), lenientDecode(value.replace(/\+/g, " "))];
   });
 }
 
