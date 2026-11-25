@@ -58,7 +58,7 @@ function showParseOutput(parsed, paramCount) {
       `<tr>
         <td class="param-key">${esc(k)}</td>
         <td class="param-eq">=</td>
-        <td class="param-val">${esc(decodeURIComponent(v.replace(/\+/g, " ")))}</td>
+        <td class="param-val">${esc(v)}</td>
       </tr>`
     ).join("");
   }
@@ -69,7 +69,8 @@ function showParseOutput(parsed, paramCount) {
   if (params.length) {
     lines.push("");
     lines.push("Query Parameters:");
-    params.forEach(([k, v]) => lines.push(`  ${k} = ${decodeURIComponent(v.replace(/\+/g, " "))}`));
+    // searchParams values are already decoded ("+" → space, %XX → chars); decoding again breaks on literal "%" such as %%MACRO%%
+    params.forEach(([k, v]) => lines.push(`  ${k} = ${v}`));
   }
   lastCopyText = lines.join("\n");
   copyButton.disabled = false;
@@ -115,11 +116,26 @@ function doEncode() {
   }
 }
 
+// Lenient decode: decodes every valid %XX run and leaves anything else as-is, so ad-server macros like
+// %%VIDEO_ID%% or %%CACHEBUSTER%% (which make decodeURIComponent throw "URI malformed") survive untouched.
+function lenientDecode(text) {
+  return text.replace(/(?:%[0-9A-Fa-f]{2})+/g, run => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      // run is not valid UTF-8 as a whole (e.g. "%CA" from %%CACHEBUSTER%%): decode each escape that works on its own
+      return run.replace(/%[0-9A-Fa-f]{2}/g, seq => {
+        try { return decodeURIComponent(seq); } catch { return seq; }
+      });
+    }
+  });
+}
+
 function doDecode() {
   const value = getInput("decode");
   if (!value) return;
   try {
-    showTextOutput(decodeURIComponent(value.replace(/\+/g, " ")), "Decoded", "Decoded URL-encoded string.");
+    showTextOutput(lenientDecode(value.replace(/\+/g, " ")), "Decoded", "Decoded URL-encoded string.");
   } catch {
     setStatus("Unable to decode — check for malformed percent-encoding.", true);
   }

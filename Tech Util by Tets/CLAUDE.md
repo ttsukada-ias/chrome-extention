@@ -47,4 +47,4 @@ It is loaded via `<script>` tag in both `json-beautilier.html` and `xml-beautifi
 - `storage` — persist popup menu order
 
 ## Publishing
-The extension is submitted to the Chrome Web Store. Bump `"version"` in `manifest.json` before each submission (current: `1.2`). The store requires a written justification for each permission when submitting.
+The extension is submitted to the Chrome Web Store. Bump `"version"` in `manifest.json` before each submission (current: `1.3`). The store requires a written justification for each permission when submitting.
