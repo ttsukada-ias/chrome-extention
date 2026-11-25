@@ -21,7 +21,7 @@ To test the popup specifically, pin the extension and click the icon.
 `popup.html` / `popup.js` — the extension popup. Renders a draggable list of tool buttons. Tool order is persisted via `chrome.storage.local` under the key `toolOrder`. All tools are defined in the `TOOLS` array at the top of `popup.js`; adding a new tool only requires adding an entry there.
 
 ### Tool pages
-Each tool is a self-contained pair of files (`*.html` + `*.js`) that opens in a new browser tab via `chrome.tabs.create`. Tools have no dependency on each other or on the popup.
+Each tool is a self-contained pair of files (`*.html` + `*.js`) that opens in a new browser tab via `chrome.tabs.create` (which needs no permission). Tools have no dependency on each other or on the popup.
 
 | File pair | Purpose |
 |---|---|
@@ -43,8 +43,7 @@ It is loaded via `<script>` tag in both `json-beautilier.html` and `xml-beautifi
 `jsontocsv.js` is a legacy standalone CSV converter; `json-to-csv.js` is the active one.
 
 ## Permissions
-- `tabs` — open tool pages in new tabs
 - `storage` — persist popup menu order
 
 ## Publishing
-The extension is submitted to the Chrome Web Store. Bump `"version"` in `manifest.json` before each submission (current: `1.2`). The store requires a written justification for each permission when submitting.
+The extension is submitted to the Chrome Web Store. Bump `"version"` in `manifest.json` before each submission (current: `1.3`). The store requires a written justification for each permission when submitting.

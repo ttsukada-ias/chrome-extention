@@ -48,8 +48,9 @@ function showParseOutput(parsed, paramCount) {
     </div>`
   ).join("");
 
-  // Params table
-  const params = [...parsed.searchParams.entries()];
+  // Params table: split the raw query ourselves instead of using parsed.searchParams, which decodes
+  // "%AD"/"%CA" inside macros like %%ADVERTISING_…%% / %%CACHEBUSTER%% into "�"
+  const params = parseQueryParams(parsed.search);
   if (params.length === 0) {
     paramsTable.style.display = "none";
   } else {
@@ -58,7 +59,7 @@ function showParseOutput(parsed, paramCount) {
       `<tr>
         <td class="param-key">${esc(k)}</td>
         <td class="param-eq">=</td>
-        <td class="param-val">${esc(decodeURIComponent(v.replace(/\+/g, " ")))}</td>
+        <td class="param-val">${esc(v)}</td>
       </tr>`
     ).join("");
   }
@@ -69,7 +70,7 @@ function showParseOutput(parsed, paramCount) {
   if (params.length) {
     lines.push("");
     lines.push("Query Parameters:");
-    params.forEach(([k, v]) => lines.push(`  ${k} = ${decodeURIComponent(v.replace(/\+/g, " "))}`));
+    params.forEach(([k, v]) => lines.push(`  ${k} = ${v}`));
   }
   lastCopyText = lines.join("\n");
   copyButton.disabled = false;
@@ -115,11 +116,38 @@ function doEncode() {
   }
 }
 
+// Lenient decode: decodes every valid %XX run and leaves anything else as-is, so ad-server macros like
+// %%VIDEO_ID%% or %%CACHEBUSTER%% (which make decodeURIComponent throw "URI malformed") survive untouched.
+function lenientDecode(text) {
+  return text.replace(/(?:%[0-9A-Fa-f]{2})+/g, run => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      // run is not valid UTF-8 as a whole (e.g. "%CA" from %%CACHEBUSTER%%): decode each escape that works on its own
+      return run.replace(/%[0-9A-Fa-f]{2}/g, seq => {
+        try { return decodeURIComponent(seq); } catch { return seq; }
+      });
+    }
+  });
+}
+
+// Returns [key, value] pairs from a raw "?a=1&b=2" string, decoded with lenientDecode ("+" → space).
+function parseQueryParams(search) {
+  const query = search.startsWith("?") ? search.slice(1) : search;
+  if (!query) return [];
+  return query.split("&").filter(Boolean).map(pair => {
+    const eq = pair.indexOf("=");
+    const key = eq === -1 ? pair : pair.slice(0, eq);
+    const value = eq === -1 ? "" : pair.slice(eq + 1);
+    return [lenientDecode(key.replace(/\+/g, " ")), lenientDecode(value.replace(/\+/g, " "))];
+  });
+}
+
 function doDecode() {
   const value = getInput("decode");
   if (!value) return;
   try {
-    showTextOutput(decodeURIComponent(value.replace(/\+/g, " ")), "Decoded", "Decoded URL-encoded string.");
+    showTextOutput(lenientDecode(value.replace(/\+/g, " ")), "Decoded", "Decoded URL-encoded string.");
   } catch {
     setStatus("Unable to decode — check for malformed percent-encoding.", true);
   }
