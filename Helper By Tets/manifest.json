@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Helper by Tets",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "Publica live dashboards, creative review, bidder info, RTB stream, and log tools using your app.getpublica.com session.",
   "icons": {
     "16": "icons/icon16.png",

@@ -106,10 +106,19 @@ window.DashboardFilters = (() => {
     }
   }
 
+  function matchingOptions(key) {
+    const entry = state.get(key), search = $(`filter-${key}-search`);
+    if (entry.loading || entry.error || !entry.options) return [];
+    const query = (search?.value || "").trim().toLowerCase();
+    return entry.options.filter(o => `${o.label} ${o.id}`.toLowerCase().includes(query));
+  }
+
   function renderOptions(key) {
     const entry = state.get(key), list = $(`filter-${key}-options`);
     if (!list) return;
     list.replaceChildren();
+    const selectAllButton = $(`filter-${key}-select-all`);
+    if (selectAllButton) selectAllButton.disabled = !matchingOptions(key).length;
     if (entry.loading || entry.error || entry.options === null) {
       const text = document.createElement("p"); text.className = "hint";
       text.textContent = entry.loading ? "Loading options…" : entry.error || "Open this filter to load options.";
@@ -120,8 +129,7 @@ window.DashboardFilters = (() => {
       }
       return;
     }
-    const query = $(`filter-${key}-search`).value.trim().toLowerCase();
-    const options = entry.options.filter(o => `${o.label} ${o.id}`.toLowerCase().includes(query));
+    const options = matchingOptions(key);
     if (!options.length) { const text = document.createElement("p"); text.className = "hint"; text.textContent = "No matching options."; list.appendChild(text); }
     if (options.length > 200) {
       const hint = document.createElement("p"); hint.className = "hint";
@@ -171,6 +179,15 @@ window.DashboardFilters = (() => {
       const input = document.createElement("input"); input.type = "search"; input.id = label.htmlFor; input.autocomplete = "off";
       input.addEventListener("input", () => renderOptions(key));
       const actions = document.createElement("div"); actions.className = "selection-actions";
+      // Like demand sources, Select all adds every option matching the current search.
+      const selectAllButton = document.createElement("button"); selectAllButton.type = "button"; selectAllButton.textContent = "Select all";
+      selectAllButton.id = `filter-${key}-select-all`;
+      selectAllButton.addEventListener("click", () => {
+        const options = matchingOptions(key);
+        if (!options.length) return;
+        options.forEach(o => selected(key).add(o.id)); changed(key);
+      });
+      actions.appendChild(selectAllButton);
       const clearButton = document.createElement("button"); clearButton.type = "button"; clearButton.textContent = "Clear";
       clearButton.addEventListener("click", () => { selected(key).clear(); changed(key); }); actions.appendChild(clearButton);
       const list = document.createElement("div"); list.className = "checkbox-options"; list.id = `filter-${key}-options`;

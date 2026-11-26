@@ -2,6 +2,17 @@
 
 This repo can now be loaded directly as an unpacked Chrome extension.
 
+## Version 2.4.3
+
+- Adds a **Select all** button to every Live Dashboard filter (Bidders, Bidder
+  Groups, Channels, Channel Groups, Routes, Destinations, Device Types and
+  Outbound Deals), next to the existing **Clear** button. Like Demand source,
+  it selects all options matching the current search.
+
+Upload `helper-by-tets-v2.4.3.zip` to the existing Chrome Web Store item's package tab
+and submit it for review. The ZIP contains the extension's runtime files with
+`manifest.json` at its root.
+
 ## Version 2.4.2
 
 - Fixes Live Logs results tables clipping columns beyond the page width
